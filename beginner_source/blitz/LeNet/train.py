@@ -51,7 +51,7 @@ if torch.cuda.device_count() > 1:
     print(''.join('%d GPUs is available!' % torch.cuda.device_count()))
 
     # dim = 0 [30, xxx] -> [10, ...], [10, ...], [10, ...] on 3 GPUs
-    net = nn.DataParallel(net, device_ids=[0, 1, 2])
+    net = nn.DataParallel(net, device_ids=[0, 1, 2, 3])
 else:
     print("no GPUs found,use CPU instead!")
 
@@ -70,7 +70,7 @@ optimizer = optim.SGD(net.parameters(),
 for epoch in range(params['epochs']):  # loop over the dataset multiple times
 
     running_loss = 0.0
-    for i, data in enumerate(train_loader, 0):
+    for i, data in enumerate(train_loader, start=0):
         # get the inputs; data is a list of [inputs, labels]
         # if torch.cuda.device_count() > 1:
         #     inputs, labels = data
@@ -78,15 +78,13 @@ for epoch in range(params['epochs']):  # loop over the dataset multiple times
         #     labels = labels.to(device)
         # else:
         #     inputs, labels = data
-        inputs, labels = data
-        inputs.to(device)
-        labels.to(device)
+        inputs, labels = data[0].to(device), data[1].to(device)
 
         # zero the parameter gradients
         optimizer.zero_grad()
 
         # forward + backward + optimize
-        outputs = net(inputs)
+        outputs = net(inputs).to(device)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
@@ -112,9 +110,7 @@ with torch.no_grad():
         # else:
         #     images, labels = data
 
-        images, labels = data
-        images = images.to(device)
-        labels = labels.to(device)
+        images, labels = data[0].to(device), data[1].to(device)
 
         outputs = net(images)
         _, predicted = torch.max(outputs.data, 1)

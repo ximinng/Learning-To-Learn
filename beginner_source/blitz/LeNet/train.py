@@ -72,12 +72,15 @@ for epoch in range(params['epochs']):  # loop over the dataset multiple times
     running_loss = 0.0
     for i, data in enumerate(train_loader, 0):
         # get the inputs; data is a list of [inputs, labels]
-        if torch.cuda.device_count() > 1:
-            inputs, labels = data
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-        else:
-            inputs, labels = data
+        # if torch.cuda.device_count() > 1:
+        #     inputs, labels = data
+        #     inputs = inputs.to(device)
+        #     labels = labels.to(device)
+        # else:
+        #     inputs, labels = data
+        inputs, labels = data
+        inputs.to(device)
+        labels.to(device)
 
         # zero the parameter gradients
         optimizer.zero_grad()
@@ -102,12 +105,16 @@ correct = 0
 total = 0
 with torch.no_grad():
     for data in test_loader:
-        if torch.cuda.device_count() > 1:
-            images, labels = data
-            images = images.to(device)
-            labels = labels.to(device)
-        else:
-            images, labels = data
+        # if torch.cuda.device_count() > 1:
+        #     images, labels = data
+        #     images = images.to(device)
+        #     labels = labels.to(device)
+        # else:
+        #     images, labels = data
+
+        images, labels = data
+        images = images.to(device)
+        labels = labels.to(device)
 
         outputs = net(images)
         _, predicted = torch.max(outputs.data, 1)

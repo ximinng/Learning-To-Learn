@@ -6,18 +6,10 @@
 import torch
 import torch.nn.functional as F
 import math
-# import os
+import os
 import time
 import json
 import logging
-
-import os
-import sys
-
-current_directory = os.path.dirname(os.path.abspath(__file__))
-root_path = os.path.abspath(os.path.dirname(current_directory) + os.path.sep + ".")
-sys.path.append(root_path)
-
 from torchmeta.utils.data import BatchMetaDataLoader
 from torchmeta.datasets import Omniglot, MiniImagenet
 from torchmeta.toy import Sinusoid

@@ -7,14 +7,10 @@
 import os
 import sys
 
-curPath = os.path.abspath(os.path.dirname(__file__))
-print(curPath)
+current_directory = os.path.dirname(os.path.abspath(__file__))
+print(current_directory)
+root_path = os.path.abspath(os.path.dirname(current_directory) + os.path.sep + ".")
+print(root_path)
+sys.path.append(root_path)
 
-rootPath = os.path.split(curPath)[0]
-print(rootPath)
-
-sys.path.append(os.path.split(rootPath)[0])
-
-print(
-    sys.path
-)
+print(sys.path)

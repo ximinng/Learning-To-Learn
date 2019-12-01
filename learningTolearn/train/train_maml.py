@@ -6,10 +6,17 @@
 import torch
 import torch.nn.functional as F
 import math
-import os
+# import os
 import time
 import json
 import logging
+
+import sys
+import os
+
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
 
 from torchmeta.utils.data import BatchMetaDataLoader
 from torchmeta.datasets import Omniglot, MiniImagenet

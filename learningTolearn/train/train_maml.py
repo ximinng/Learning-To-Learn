@@ -24,16 +24,14 @@ from learningTolearn.util import ToTensor1D
 
 def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-    device = torch.device('cuda' if args.use_cuda
-                                    and torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     if (args.output_folder is not None):
         if not os.path.exists(args.output_folder):
             os.makedirs(args.output_folder)
             logging.debug('Creating folder `{0}`'.format(args.output_folder))
 
-        folder = os.path.join(args.output_folder,
-                              time.strftime('%Y-%m-%d_%H%M%S'))
+        folder = os.path.join(args.output_folder, time.strftime('%Y-%m-%d_%H%M%S'))
         os.makedirs(folder)
         logging.debug('Creating folder `{0}`'.format(folder))
 

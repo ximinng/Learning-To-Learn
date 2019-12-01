@@ -105,14 +105,16 @@ class ModelAgnosticMetaLearning(object):
                     'mean_outer_loss':
                  }
         """
-        assert 'test' in batch, "The batch does not contain any test dataset."
+        if 'test' not in batch:
+            raise RuntimeError('The batch does not contain any test dataset.')
 
         _, test_targets = batch['test']
         num_tasks = test_targets.size(0)
-        is_classification_task = (not test_targets.dtype.is_floating_point)  # is_classification_task 非浮点数
+        is_classification_task = (not test_targets.dtype.is_floating_point)
         results = {
             'num_tasks': num_tasks,
-            'inner_losses': np.zeros((self.num_adaptation_steps, num_tasks), dtype=np.float32),  #
+            'inner_losses': np.zeros((self.num_adaptation_steps,
+                                      num_tasks), dtype=np.float32),
             'outer_losses': np.zeros((num_tasks,), dtype=np.float32),
             'mean_outer_loss': 0.
         }
@@ -121,29 +123,28 @@ class ModelAgnosticMetaLearning(object):
                 'accuracies_before': np.zeros((num_tasks,), dtype=np.float32),
                 'accuracies_after': np.zeros((num_tasks,), dtype=np.float32)
             })
-        mean_outer_loss = torch.tensor(0., device=self.device)  # init outer loss
 
-        """outer loop"""
+        mean_outer_loss = torch.tensor(0., device=self.device)
         for task_id, (train_inputs, train_targets, test_inputs, test_targets) \
                 in enumerate(zip(*batch['train'], *batch['test'])):
-            params, adaptation_results = self.adapt(train_inputs,
-                                                    train_targets,
+            params, adaptation_results = self.adapt(train_inputs, train_targets,
                                                     is_classification_task=is_classification_task,
                                                     num_adaptation_steps=self.num_adaptation_steps,
-                                                    step_size=self.step_size,
-                                                    first_order=self.first_order)
+                                                    step_size=self.step_size, first_order=self.first_order)
+
             results['inner_losses'][:, task_id] = adaptation_results['inner_losses']
             if is_classification_task:
                 results['accuracies_before'][task_id] = adaptation_results['accuracy_before']
 
             with torch.set_grad_enabled(self.model.training):
-                test_logits = self.model(test_inputs, prams=params)
+                test_logits = self.model(test_inputs, params=params)
                 outer_loss = self.loss_function(test_logits, test_targets)
                 results['outer_losses'][task_id] = outer_loss.item()
                 mean_outer_loss += outer_loss
 
             if is_classification_task:
-                results['accuracies_after'][task_id] = compute_accuracy(test_logits, test_targets)
+                results['accuracies_after'][task_id] = compute_accuracy(
+                    test_logits, test_targets)
 
         mean_outer_loss.div_(num_tasks)
         results['mean_outer_loss'] = mean_outer_loss.item()
@@ -182,12 +183,11 @@ class ModelAgnosticMetaLearning(object):
                 results['accuracy_before'] = compute_accuracy(logits, targets)
 
             self.model.zero_grad()
-            params = update_parameters(self.model,
-                                       inner_loss,
-                                       step_size=step_size,
-                                       params=params,
+            params = update_parameters(self.model, inner_loss,
+                                       step_size=step_size, params=params,
                                        first_order=(not self.model.training) or first_order)
-            return params, results
+
+        return params, results
 
     def train(self, dataloader, max_batches=500, verbose=True, **kwargs):
         """

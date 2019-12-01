@@ -8,12 +8,14 @@ import sys
 
 path = {
     'BASE_PATH': os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
+    'LEARNING_TO_LEARN': os.path.dirname(os.path.abspath(__file__))
 }
+for k, v in path.items():
+    print(v)
+    sys.path.append(v)
 
-current_directory = os.path.dirname(os.path.abspath(__file__))
-root_path = os.path.abspath(os.path.dirname(current_directory) + os.path.sep + ".")
-sys.path.append(root_path)
+print(sys.path)
 
-from learningTolearn import backbone, dataloader, method, test, train, util
-
-__all__ = ['backbone', 'dataloader', 'method', 'test', 'train', 'util']
+# from learningTolearn import backbone, dataloader, method, test, train, util
+#
+# __all__ = ['backbone', 'dataloader', 'method', 'test', 'train', 'util']

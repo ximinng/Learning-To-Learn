@@ -17,9 +17,9 @@ from torchmeta.toy import Sinusoid
 from torchmeta.transforms import ClassSplitter, Categorical, Rotation
 from torchvision.transforms import ToTensor, Resize, Compose
 
-from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid
-from learningTolearn.method.optimization import ModelAgnosticMetaLearning
-from learningTolearn.util import ToTensor1D
+from ..backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid
+from ..method.optimization import ModelAgnosticMetaLearning
+from ..util import ToTensor1D
 
 
 def main(args):

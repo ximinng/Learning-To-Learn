@@ -5,10 +5,16 @@
 """
 
 import os
+import sys
 
-folder = '/Data/'
+curPath = os.path.abspath(os.path.dirname(__file__))
+print(curPath)
 
-folder = os.path.abspath(folder)
-print(folder)
-model_path = os.path.abspath(os.path.join(folder, 'model.th'))
-print(model_path)
+rootPath = os.path.split(curPath)[0]
+print(rootPath)
+
+sys.path.append(os.path.split(rootPath)[0])
+
+print(
+    sys.path
+)

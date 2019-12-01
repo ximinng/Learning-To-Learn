@@ -9,7 +9,7 @@ import numpy as np
 from tqdm import tqdm
 
 from collections import OrderedDict
-from ...util import compute_accuracy, update_parameters, tensors_to_device
+from learningTolearn.util import compute_accuracy, update_parameters, tensors_to_device
 
 
 class ModelAgnosticMetaLearning(object):

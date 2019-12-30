@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-   Description : 
+   Description :   pytorch.geometric
    Author :        xxm
 """

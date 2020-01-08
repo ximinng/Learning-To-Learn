@@ -3,7 +3,7 @@
    Description :   The data type of tensor
    Author :        xxm
 """
-# In[]
+# In[]:
 import torch
 
 """Dim 0"""
@@ -83,4 +83,3 @@ torch.eye(3, 3)  # 单位矩阵
 # 随机shuffle
 torch.randperm(10)
 # Out[14]: tensor([6, 5, 1, 3, 9, 4, 8, 7, 0, 2])
-

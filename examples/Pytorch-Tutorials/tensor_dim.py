@@ -52,8 +52,8 @@ bias = bias.unsqueeze(1).unsqueeze(2).unsqueeze(0)  # 为bias增加维度
 # 正索引:from start 负索引:from end
 
 # In[]: Expand 维度扩展 v.s. repeat
-# Expand: broadcasting
-# Repeat: memory copies
+# Expand: broadcasting -- 逻辑复制
+# Repeat: memory copies -- 物理复制
 
 # bias.shape
 # Out[16]: torch.Size([1, 32, 1, 1])

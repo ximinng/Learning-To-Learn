@@ -61,7 +61,7 @@ torch.randint(low=1, high=10, size=[3, 3])
 randInt = rand.to(dtype=torch.short)
 
 # 填充
-torch.full([], 7)
+torch.full(size=[], fill_value=7)
 torch.full([2, 3], 7)
 
 # 等差数列

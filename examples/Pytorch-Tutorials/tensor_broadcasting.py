@@ -6,4 +6,7 @@
 # In[]:
 import torch
 
-# In[]:
+# In[]: broadcasting-able适用条件: 这里的适用条件
+# 1. no dim
+# 2. dim of size 1
+# 3. match from last dim

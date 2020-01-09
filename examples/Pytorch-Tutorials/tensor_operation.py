@@ -109,3 +109,15 @@ print(grad.median())  # tensor(4.9276)
 
 grad.clamp(6)
 grad.clamp(min=0, max=10)  # 将梯度限制在 0~10 之间
+
+# In[]: where
+
+cond = torch.rand(2, 2)
+# Out[25]: tensor([[0.6343, 0.7824], [0.3671, 0.7832]])
+a = torch.zeros(2, 2)
+b = torch.ones(2, 2)
+
+torch.where(condition=cond > 0.5, input=a, other=b)
+# Out[28]:tensor([[0., 0.], [1., 0.]])
+
+# In: gather

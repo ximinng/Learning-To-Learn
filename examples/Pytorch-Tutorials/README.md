@@ -14,3 +14,9 @@
 6 .Tensor operation
 
 7. Tensor statistics
+
+### Stochastic gradient descent
+
+1. Activation function
+
+2 .loss function

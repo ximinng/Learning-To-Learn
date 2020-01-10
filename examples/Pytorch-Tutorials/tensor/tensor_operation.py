@@ -110,7 +110,7 @@ print(grad.median())  # tensor(4.9276)
 grad.clamp(6)
 grad.clamp(min=0, max=10)  # 将梯度限制在 0~10 之间
 
-# In[]: where
+# In[]: where 类似三元操作符 ? :
 
 cond = torch.rand(2, 2)
 # Out[25]: tensor([[0.6343, 0.7824], [0.3671, 0.7832]])
@@ -120,4 +120,12 @@ b = torch.ones(2, 2)
 torch.where(condition=cond > 0.5, input=a, other=b)
 # Out[28]:tensor([[0., 0.], [1., 0.]])
 
-# In: gather
+# In[]: gather
+
+prob = torch.randn(4, 10)
+
+_, idx = prob.topk(dim=1, k=3)
+
+label = torch.arange(10) + 100
+
+torch.gather(label.expand(4, 10), dim=1, index=idx.long())

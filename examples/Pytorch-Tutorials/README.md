@@ -20,3 +20,5 @@
 1. Activation function
 
 2 .loss function
+
+3 .gradient descent

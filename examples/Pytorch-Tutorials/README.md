@@ -22,3 +22,13 @@
 2 .loss function
 
 3 .gradient descent
+
+### neural network
+
+1. build a neural network with matrix multiplication
+
+1. build a neural network extends nn.Module and use nn.Linear create a fully connected layer
+
+2. Move to GPU
+
+3. Visdom: Visualization

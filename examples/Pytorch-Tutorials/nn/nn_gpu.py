@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-   Description :   调用GPU训练网络
+   Description :   将网络迁移到GPU训练
    Author :        xxm
 """
 import torch

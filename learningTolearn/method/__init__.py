@@ -4,5 +4,6 @@
    Author :        xxm
 """
 from .optimization import *
+from .metric import *
 
-__all__ = ['optimization']
+__all__ = ['optimization', 'metric']

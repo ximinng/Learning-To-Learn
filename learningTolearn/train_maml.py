@@ -105,7 +105,6 @@ if __name__ == '__main__':
                         help='Use CUDA if available.')
 
     args = parser.parse_args()
-    args.device = torch.device('cuda' if args.use_cuda
-                                         and torch.cuda.is_available() else 'cpu')
+    args.device = torch.device('cuda' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     train(args)

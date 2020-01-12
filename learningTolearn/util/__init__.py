@@ -3,6 +3,6 @@
    Description : 
    Author :        xxm
 """
-from .utils import compute_accuracy, update_parameters, tensors_to_device, ToTensor1D
+from .utils import update_parameters, get_accuracy
 
-__all__ = ['compute_accuracy', 'update_parameters', 'tensors_to_device', 'ToTensor1D']
+__all__ = ['update_parameters', 'get_accuracy']

@@ -7,79 +7,53 @@
 import torch
 
 from collections import OrderedDict
-from torchmeta.modules import MetaModule
 
 
-def update_parameters(model, loss, params=None, step_size=0.5, first_order=False):
-    """
-    Update of the meta-parameters with one step of gradient descent on the loss function.
+def update_parameters(model, loss, step_size=0.5, first_order=False):
+    """Update the parameters of the model, with one step of gradient descent.
+
+    Parameters
     ----------
-    :param model : `torchmeta.modules.MetaModule` instance
-        The model.
-    :param loss : `torch.Tensor` instance
-        The value of the inner-loss.
-        This is the result of the training dataset through the loss function.
-    :param params : `collections.OrderedDict` instance, optional
-        Dictionary containing the meta-parameters of the model.
-        If `None`, then the values stored in `model.meta_named_parameters()` are used.
-        This is useful for running multiple steps of gradient descent as the inner-loop.
-    :param step_size : int, `torch.Tensor`, or `collections.OrderedDict` instance (default: 0.5)
-        The step size in the gradient update.
-        If an `OrderedDict`, then the keys must match the keys in `params`.
-    :param first_order : bool (default: `False`)
-        If `True`, then the first order approximation of MAML is used.
+    model : `MetaModule` instance
+        Model.
+    loss : `torch.FloatTensor` instance
+        Loss function on which the gradient are computed for the descent step.
+    step_size : float (default: `0.5`)
+        Step-size of the gradient descent step.
+    first_order : bool (default: `False`)
+        If `True`, use the first-order approximation of MAML.
+
+    Returns
+    -------
+    params : OrderedDict
+        Dictionary containing the parameters after one step of adaptation.
     """
-    if not isinstance(model, MetaModule):
-        raise ValueError("{} must be instance of MetaModule".format(model))
+    grads = torch.autograd.grad(loss, model.meta_parameters(),
+                                create_graph=not first_order)
 
-    if params is None:
-        params = OrderedDict(model.meta_named_parameters())
+    params = OrderedDict()
+    for (name, param), grad in zip(model.meta_named_parameters(), grads):
+        params[name] = param - step_size * grad
 
-    grads = torch.autograd.grad(loss, params.values(), create_graph=not first_order)
-
-    out = OrderedDict()
-    if isinstance(step_size, (dict, OrderedDict)):
-        for (name, param), grad in zip(params.items(), grads):
-            out[name] = param - step_size[name] * grad
-    else:
-        for (name, param), grad in zip(params.items(), grads):
-            out[name] = param - step_size * grad
-
-    return out
+    return params
 
 
-def compute_accuracy(logits, targets):
-    """Compute the accuracy"""
-    with torch.no_grad():
-        _, predictions = torch.max(logits, dim=1)
-        accuracy = torch.mean(
-            predictions.eq(targets).float()
-        )
-    return accuracy.item()
+def get_accuracy(logits, targets):
+    """Compute the accuracy (after adaptation) of MAML on the test/query points
 
+    Parameters
+    ----------
+    logits : `torch.FloatTensor` instance
+        Outputs/logits of the model on the query points. This tensor has shape
+        `(num_examples, num_classes)`.
+    targets : `torch.LongTensor` instance
+        A tensor containing the targets of the query points. This tensor has 
+        shape `(num_examples,)`.
 
-def tensors_to_device(tensors, device=torch.device('cpu')):
-    """Place a collection of tensors in a specific device"""
-    if isinstance(tensors, torch.Tensor):
-        return tensors.to(device=device)
-    elif isinstance(tensors, (list, tuple)):
-        return type(tensors)(tensors_to_device(tensor, device=device)
-                             for tensor in tensors)
-    elif isinstance(tensors, (dict, OrderedDict)):
-        return type(tensors)([(name, tensors_to_device(tensor, device=device))
-                              for (name, tensor) in tensors.items()])
-    else:
-        raise NotImplementedError()
-
-
-class ToTensor1D(object):
-    """Convert a `numpy.ndarray` to tensor. Unlike `ToTensor` from torchvision,
-    this converts numpy arrays regardless of the number of dimensions.
-    Converts automatically the array to `float32`.
+    Returns
+    -------
+    accuracy : `torch.FloatTensor` instance
+        Mean accuracy on the query points
     """
-
-    def __call__(self, array):
-        return torch.from_numpy(array.astype('float32'))
-
-    def __repr__(self):
-        return self.__class__.__name__ + '()'
+    _, predictions = torch.max(logits, dim=-1)
+    return torch.mean(predictions.eq(targets).float())

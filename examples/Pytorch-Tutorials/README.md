@@ -32,3 +32,7 @@
 2. Move to GPU
 
 3. Visdom: Visualization
+
+4. Cross Validation
+
+5. Drop out

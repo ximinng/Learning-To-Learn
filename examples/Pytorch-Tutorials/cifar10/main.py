@@ -6,8 +6,7 @@ from torch import nn, optim
 
 from lenet5 import Lenet5
 
-
-# from resnet import ResNet18
+from resnet import ResNet18
 
 
 def main():
@@ -16,7 +15,7 @@ def main():
     cifar_train = datasets.CIFAR10('cifar', True, transform=transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],  # R.G.B
                              std=[0.229, 0.224, 0.225])
     ]), download=True)
     cifar_train = DataLoader(cifar_train, batch_size=batchsz, shuffle=True)
@@ -36,14 +35,14 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    model = Lenet5().to(device)
-    # model = ResNet18().to(device)
+    # model = Lenet5().to(device)
+    model = ResNet18().to(device)
 
     criteon = nn.CrossEntropyLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     print(model)
 
-    for epoch in range(1000):
+    for epoch in range(10):
         # train
         model.train()
         for batchidx, (x, label) in enumerate(cifar_train):

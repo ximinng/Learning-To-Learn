@@ -5,106 +5,123 @@
 """
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
+import torch.nn.functional as F
+import torchvision
+
+resnet18 = torchvision.models.resnet18(pretrained=False)  # 我们不下载预训练权重
 
 
-class ResBlock(nn.Module):
-    """
-    resnet block
-    """
+class SkipConnection(nn.Module):
+    def __init__(self, in_channels, out_channels, activation, batch_norm, stride):
+        super(SkipConnection, self).__init__()
+        self.batch_norm = batch_norm
+        self.activation = activation
 
-    def __init__(self, ch_in, ch_out, stride=1):
-        """
-        :param ch_in:
-        :param ch_out:
-        """
-        super(ResBlock, self).__init__()
-
-        # we add stride support for resbok, which is distinct from tutorials.
-        self.conv1 = nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=stride, padding=1)
-        self.bn1 = nn.BatchNorm2d(ch_out)
-        self.conv2 = nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(ch_out)
-
-        self.extra = nn.Sequential()
-        if ch_out != ch_in:
-            # [b, ch_in, h, w] => [b, ch_out, h, w]
-            self.extra = nn.Sequential(
-                nn.Conv2d(ch_in, ch_out, kernel_size=1, stride=stride),
-                nn.BatchNorm2d(ch_out)
-            )
+        if in_channels != out_channels or stride != 1:
+            self.adjust = True
+            self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride)
+            if batch_norm:
+                self.bn = nn.BatchNorm2d(out_channels)
+        else:
+            self.adjust = False
 
     def forward(self, x):
-        """
-        :param x: [b, ch, h, w]
-        :return:
-        """
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        # short cut.
-        # extra module: [b, ch_in, h, w] => [b, ch_out, h, w]
-        # element-wise add:
-        out = self.extra(x) + out
-        out = F.relu(out)
+        if self.adjust:
+            out = self.conv(x)
+            if self.batch_norm:
+                out = self.bn(out)
+            return self.activation(out)
+        else:
+            return x
 
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, activation, batch_norm, stride=1):
+        super(BasicBlock, self).__init__()
+        self.batch_norm = batch_norm
+        self.activation = activation
+
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1)
+        if batch_norm:
+            self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+
+        if batch_norm:
+            self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.shortcut = SkipConnection(in_channels, out_channels, activation, batch_norm, stride)
+
+    def forward(self, x):
+        out = self.conv1(x)
+        if self.batch_norm:
+            out = self.bn1(out)
+        out = self.activation(out)
+
+        out = self.conv2(out)
+        if self.batch_norm:
+            out = self.bn2(out)
+        out = self.activation(out)
+
+        out = out + self.shortcut(x)
         return out
 
 
-class ResNet18(nn.Module):
-
-    def __init__(self):
-        super(ResNet18, self).__init__()
-
-        self.conv1 = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=3, stride=3, padding=0),
-            nn.BatchNorm2d(64)
+class ResNet10(nn.Module):
+    def __init__(self, block=BasicBlock, activation=F.relu, batch_norm=True, num_classes=10):
+        super(ResNet10, self).__init__()
+        self.activation = activation
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(16)
+        self.layer = nn.Sequential(
+            block(16, 16, activation, batch_norm, stride=1),
+            block(16, 32, activation, batch_norm, stride=2),
+            block(32, 64, activation, batch_norm, stride=2),
+            block(64, 128, activation, batch_norm, stride=2)
         )
-        # followed 4 blocks
-        # [b, 64, h, w] => [b, 128, h ,w]
-        self.blk1 = ResBlock(64, 128, stride=2)
-        # [b, 128, h, w] => [b, 256, h, w]
-        self.blk2 = ResBlock(128, 256, stride=2)
-        # # [b, 256, h, w] => [b, 512, h, w]
-        self.blk3 = ResBlock(256, 512, stride=2)
-        # # [b, 512, h, w] => [b, 1024, h, w]
-        self.blk4 = ResBlock(512, 512, stride=2)
-
-        self.outlayer = nn.Linear(512 * 1 * 1, 10)
+        self.linear = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        """
-        :param x:
-        :return:
-        """
-        x = F.relu(self.conv1(x))
-
-        # [b, 64, h, w] => [b, 1024, h, w]
-        x = self.blk1(x)
-        x = self.blk2(x)
-        x = self.blk3(x)
-        x = self.blk4(x)
-
-        # print('after conv:', x.shape) : [b, 512, 2, 2]
-        # [b, 512, h, w] => [b, 512, 1, 1]
-        x = F.adaptive_avg_pool2d(x, [1, 1])
-        # print('after pool:', x.shape)
-        x = x.view(x.size(0), -1)
-        x = self.outlayer(x)
-
-        return x
+        out = self.activation(self.bn1(self.conv1(x)))
+        out = self.layer(out)
+        out = F.avg_pool2d(out, 4)
+        out = out.view(out.size(0), -1)
+        out = self.linear(out)
+        return out
 
 
-def main():
-    blk = ResBlock(64, 128, stride=4)
-    tmp = torch.randn(2, 64, 32, 32)
-    out = blk(tmp)
-    print('block:', out.shape)
+class BottleneckBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, activation, batch_norm, stride=1):
+        super(BottleneckBlock, self).__init__()
+        self.batch_norm = batch_norm
+        self.activation = activation
+        half_in_c = in_channels // 2
 
-    x = torch.randn(2, 3, 32, 32)
-    model = ResNet18()
-    out = model(x)
-    print('resnet:', out.shape)
+        self.conv1 = nn.Conv2d(in_channels, half_in_c, kernel_size=1, stride=1, padding=0)
+        if batch_norm:
+            self.bn1 = nn.BatchNorm2d(half_in_c)
+        self.conv2 = nn.Conv2d(half_in_c, half_in_c, kernel_size=3, stride=1, padding=1)
+        if batch_norm:
+            self.bn2 = nn.BatchNorm2d(half_in_c)
+        self.conv3 = nn.Conv2d(half_in_c, out_channels, kernel_size=1, stride=stride, padding=0)
+        if batch_norm:
+            self.bn3 = nn.BatchNorm2d(out_channels)
+        self.shortcut = SkipConnection(in_channels, out_channels, activation, batch_norm, stride)
 
+    def forward(self, x):
+        out = self.conv1(x)
+        if self.batch_norm:
+            out = self.bn1(out)
+        out = self.activation(out)
 
-if __name__ == '__main__':
-    main()
+        out = self.conv2(out)
+        if self.batch_norm:
+            out = self.bn2(out)
+        out = self.activation(out)
+
+        out = self.conv3(out)
+        if self.batch_norm:
+            out = self.bn3(out)
+        out = self.activation(out)
+
+        out = out + self.shortcut(x)
+        return out

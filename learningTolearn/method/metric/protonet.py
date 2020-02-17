@@ -5,6 +5,7 @@
 """
 
 import torch.nn as nn
+import torchvision.models as models
 
 
 def conv3x3(in_channels, out_channels, **kwargs):
@@ -29,6 +30,7 @@ class PrototypicalNetwork(nn.Module):
             conv3x3(hidden_size, hidden_size),
             conv3x3(hidden_size, out_channels)
         )
+        self.resnet = models.resnet18()
 
     def forward(self, inputs):
         embeddings = self.encoder(inputs.view(-1, *inputs.shape[2:]))

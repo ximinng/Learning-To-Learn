@@ -37,9 +37,8 @@ def train(args):
 
             outer_loss = torch.tensor(0., device=args.device)
             accuracy = torch.tensor(0., device=args.device)
-            for task_idx, (train_input, train_target, test_input,
-                           test_target) in enumerate(zip(train_inputs, train_targets,
-                                                         test_inputs, test_targets)):
+            for task_idx, (train_input, train_target, test_input, test_target) \
+                    in enumerate(zip(train_inputs, train_targets, test_inputs, test_targets)):
                 train_logit = model(train_input)
                 inner_loss = F.cross_entropy(train_logit, train_target)
 

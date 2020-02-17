@@ -45,8 +45,7 @@ def train(args):
     dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
                                      shuffle=True, num_workers=args.num_workers)
 
-    model = PrototypicalNetwork(1, args.embedding_size,
-                                hidden_size=args.hidden_size)
+    model = PrototypicalNetwork(1, args.embedding_size, hidden_size=args.hidden_size)
     model.to(device=args.device)
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -66,8 +65,7 @@ def train(args):
             test_targets = test_targets.to(device=args.device)
             test_embeddings = model(test_inputs)
 
-            prototypes = get_prototypes(train_embeddings, train_targets,
-                                        dataset.num_classes_per_task)
+            prototypes = get_prototypes(train_embeddings, train_targets, dataset.num_classes_per_task)
             loss = prototypical_loss(prototypes, test_embeddings, test_targets)
 
             loss.backward()

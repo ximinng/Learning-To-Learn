@@ -14,7 +14,6 @@ resnet18 = torchvision.models.resnet18(pretrained=False)  # 我们不下载预�
 class SkipConnection(nn.Module):
     def __init__(self, in_channels, out_channels, activation, batch_norm, stride):
         super(SkipConnection, self).__init__()
-
         self.batch_norm = batch_norm
         self.activation = activation
 
@@ -46,8 +45,10 @@ class BasicBlock(nn.Module):
         if batch_norm:
             self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+
         if batch_norm:
             self.bn2 = nn.BatchNorm2d(out_channels)
+
         self.shortcut = SkipConnection(in_channels, out_channels, activation, batch_norm, stride)
 
     def forward(self, x):
@@ -55,10 +56,12 @@ class BasicBlock(nn.Module):
         if self.batch_norm:
             out = self.bn1(out)
         out = self.activation(out)
+
         out = self.conv2(out)
         if self.batch_norm:
             out = self.bn2(out)
         out = self.activation(out)
+
         out = out + self.shortcut(x)
         return out
 

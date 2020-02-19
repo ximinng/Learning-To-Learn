@@ -13,13 +13,13 @@ a = torch.tensor(1)  # scalar like loss value
 b = torch.tensor([1, 1])  # Bias or Linear input
 
 """Dim 2"""
-c = torch.randn(2, 784)  # (input batch, Linear input)
+c = torch.rand(2, 784)  # (input batch, Linear input)
 
 """Dim 3"""
 d = torch.rand(2, 2, 3)  # RNN (words, sentences, vector of words)
 
 """Dim 4"""
-e = torch.rand(2, 3, 28, 28)  # CNN(batch size, channel, height, width) likes (second pic, channel, height, width)
+e = torch.rand(2, 3, 28, 28)  # CNN (batch size, channel, height, width) likes (second pic, channel, height, width)
 
 # In[]:
 """create tensor from numpy"""
@@ -45,10 +45,19 @@ print(point.dtype)
 """uninitialized"""
 emptys = torch.empty(2, 3)  # 数据容器不要直接使用 数据差异性过大
 
-# In[]:
+# In[]: Tensor数据类型
 """Set Default Tensor Type"""
 torch.set_default_tensor_type(torch.FloatTensor)
 # torch.FloatTensor
+'''
+􏰹 torch.float32 or torch.float : 32-bit floating-point
+􏰹 torch.float64 or torch.double : 64-bit, double-precision floating-point 􏰹 torch.float16 or torch.half—16-bit, half-precision floating-point
+􏰹 torch.int8 : Signed 8-bit integers
+􏰹 torch.uint8 : Unsigned 8-bit integers
+􏰹 torch.int16 or torch.short : Signed 16-bit integers
+􏰹 torch.int32 or torch.int : Signed 32-bit integers
+􏰹 torch.int64 or torch.long : Signed 64-bit integers
+'''
 
 # In[]:
 """init Tensor"""

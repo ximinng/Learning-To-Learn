@@ -11,7 +11,6 @@ path = {
     'LEARNING_TO_LEARN': os.path.dirname(os.path.abspath(__file__))
 }
 for k, v in path.items():
-    print(v)
     sys.path.append(v)
 
 print(sys.path)

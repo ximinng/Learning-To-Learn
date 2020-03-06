@@ -3,6 +3,6 @@
    Description : 
    Author :        xxm
 """
-from .maml import ConvolutionalNeuralNetwork
+from .maml import ModelAgnosticMetaLearning, FOMAML
 
-__all__ = ['ConvolutionalNeuralNetwork']
+__all__ = ['ModelAgnosticMetaLearning', 'FOMAML']

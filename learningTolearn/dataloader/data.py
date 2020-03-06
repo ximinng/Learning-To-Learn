@@ -1,34 +1,141 @@
 # -*- coding: utf-8 -*-
 """
-   Description : 
+   Description :   data loader by torchemta
    Author :        xxm
 """
-# from torchmeta.datasets.helpers import omniglot
-# from torchmeta.utils.data import BatchMetaDataLoader
-#
-# dataset = omniglot("/few-shot-datasets", ways=5, shots=5, test_shots=15, meta_train=True, download=True)
-# dataloader = BatchMetaDataLoader(dataset, batch_size=16, num_workers=4)
-#
-# for batch in dataloader:
-#     train_inputs, train_targets = batch["train"]
-#     print('Train inputs shape: {0}'.format(train_inputs.shape))  # (16, 25, 1, 28, 28)
-#     print('Train targets shape: {0}'.format(train_targets.shape))  # (16, 25)
-#
-#     test_inputs, test_targets = batch["test"]
-#     print('Test inputs shape: {0}'.format(test_inputs.shape))  # (16, 75, 1, 28, 28)
-#     print('Test targets shape: {0}'.format(test_targets.shape))  # (16, 75)
+import torch.nn.functional as F
 
-from torchmeta.datasets.helpers import miniimagenet
-from torchmeta.utils.data import BatchMetaDataLoader
+from collections import namedtuple
+from torchmeta.datasets import Omniglot, MiniImagenet, TieredImagenet
+from torchmeta.toy import Sinusoid
+from torchmeta.transforms import ClassSplitter, Categorical, Rotation
+from torchvision.transforms import ToTensor, Resize, Compose
 
-dataset = miniimagenet("/few-shot-datasets", ways=5, shots=5, test_shots=15, meta_train=True, download=True)
-dataloader = BatchMetaDataLoader(dataset, batch_size=16, num_workers=4)
+from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid
+from learningTolearn.util import ToTensor1D
 
-for batch in dataloader:
-    train_inputs, train_targets = batch["train"]
-    print('Train inputs shape: {0}'.format(train_inputs.shape))  # (16, 25, 1, 84, 84)
-    print('Train targets shape: {0}'.format(train_targets.shape))  # (16, 25)
+Benchmark = namedtuple('Benchmark',
+                       'meta_train_dataset meta_val_dataset '
+                       'meta_test_dataset model loss_function')
 
-    test_inputs, test_targets = batch["test"]
-    print('Test inputs shape: {0}'.format(test_inputs.shape))  # (16, 75, 3, 84, 84)
-    print('Test targets shape: {0}'.format(test_targets.shape))  # (16, 75)
+
+def get_benchmark_by_name(name,
+                          folder,
+                          num_ways,
+                          num_shots,
+                          num_shots_test,
+                          hidden_size=None):
+    dataset_transform = ClassSplitter(shuffle=True,
+                                      num_train_per_class=num_shots,
+                                      num_test_per_class=num_shots_test)
+    if name == 'sinusoid':
+        transform = ToTensor1D()
+
+        meta_train_dataset = Sinusoid(num_shots + num_shots_test,
+                                      num_tasks=1000000,
+                                      transform=transform,
+                                      target_transform=transform,
+                                      dataset_transform=dataset_transform)
+        meta_val_dataset = Sinusoid(num_shots + num_shots_test,
+                                    num_tasks=1000000,
+                                    transform=transform,
+                                    target_transform=transform,
+                                    dataset_transform=dataset_transform)
+        meta_test_dataset = Sinusoid(num_shots + num_shots_test,
+                                     num_tasks=1000000,
+                                     transform=transform,
+                                     target_transform=transform,
+                                     dataset_transform=dataset_transform)
+
+        model = ModelMLPSinusoid(hidden_sizes=[40, 40])
+        loss_function = F.mse_loss
+
+    elif name == 'omniglot':
+        class_augmentations = [Rotation([90, 180, 270])]
+        transform = Compose([Resize(28), ToTensor()])
+
+        meta_train_dataset = Omniglot(folder,
+                                      transform=transform,
+                                      target_transform=Categorical(num_ways),
+                                      num_classes_per_task=num_ways,
+                                      meta_train=True,
+                                      class_augmentations=class_augmentations,
+                                      dataset_transform=dataset_transform,
+                                      download=True)
+        meta_val_dataset = Omniglot(folder,
+                                    transform=transform,
+                                    target_transform=Categorical(num_ways),
+                                    num_classes_per_task=num_ways,
+                                    meta_val=True,
+                                    class_augmentations=class_augmentations,
+                                    dataset_transform=dataset_transform)
+        meta_test_dataset = Omniglot(folder,
+                                     transform=transform,
+                                     target_transform=Categorical(num_ways),
+                                     num_classes_per_task=num_ways,
+                                     meta_test=True,
+                                     dataset_transform=dataset_transform)
+
+        model = ModelConvOmniglot(num_ways, hidden_size=hidden_size)
+        loss_function = F.cross_entropy
+
+    elif name == 'miniimagenet':
+        transform = Compose([Resize(84), ToTensor()])
+
+        meta_train_dataset = MiniImagenet(folder,
+                                          transform=transform,
+                                          target_transform=Categorical(num_ways),
+                                          num_classes_per_task=num_ways,
+                                          meta_train=True,
+                                          dataset_transform=dataset_transform,
+                                          download=True)
+        meta_val_dataset = MiniImagenet(folder,
+                                        transform=transform,
+                                        target_transform=Categorical(num_ways),
+                                        num_classes_per_task=num_ways,
+                                        meta_val=True,
+                                        dataset_transform=dataset_transform)
+        meta_test_dataset = MiniImagenet(folder,
+                                         transform=transform,
+                                         target_transform=Categorical(num_ways),
+                                         num_classes_per_task=num_ways,
+                                         meta_test=True,
+                                         dataset_transform=dataset_transform)
+
+        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        loss_function = F.cross_entropy
+
+    elif name == 'tieredimagenet':
+        transform = Compose([Resize(84), ToTensor()])
+
+        meta_train_dataset = TieredImagenet(folder,
+                                            transform=transform,
+                                            target_transform=Categorical(num_ways),
+                                            num_classes_per_task=num_ways,
+                                            meta_train=True,
+                                            dataset_transform=dataset_transform,
+                                            download=True)
+        meta_val_dataset = TieredImagenet(folder,
+                                          transform=transform,
+                                          target_transform=Categorical(num_ways),
+                                          num_classes_per_task=num_ways,
+                                          meta_val=True,
+                                          dataset_transform=dataset_transform)
+        meta_test_dataset = TieredImagenet(folder,
+                                           transform=transform,
+                                           target_transform=Categorical(num_ways),
+                                           num_classes_per_task=num_ways,
+                                           meta_test=True,
+                                           dataset_transform=dataset_transform)
+
+        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        loss_function = F.cross_entropy
+
+    else:
+        raise NotImplementedError('Unknown dataset `{0}`.'.format(name))
+
+    return Benchmark(meta_train_dataset=meta_train_dataset,
+                     meta_val_dataset=meta_val_dataset,
+                     meta_test_dataset=meta_test_dataset,
+                     model=model,
+                     loss_function=loss_function)

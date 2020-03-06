@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-   Description : 
+   Description :   conv model
    Author :        xxm
 """
 import torch.nn as nn
@@ -11,30 +11,31 @@ from torchmeta.modules.utils import get_subdict
 
 
 def conv_block(in_channels, out_channels, **kwargs):
-    return MetaSequential(
-        OrderedDict([
-            ('conv', MetaConv2d(in_channels,
-                                out_channels, **kwargs)),
-            ('norm', nn.BatchNorm2d(out_channels,
-                                    momentum=1.,
-                                    track_running_stats=False)),
-            ('relu', nn.ReLU()),
-            ('pool', nn.MaxPool2d(2))
-        ]))
+    return MetaSequential(OrderedDict([
+        ('conv', MetaConv2d(in_channels, out_channels, **kwargs)),
+        ('norm', MetaBatchNorm2d(out_channels, momentum=1., track_running_stats=False)),
+        ('relu', nn.ReLU()),
+        ('pool', nn.MaxPool2d(2))
+    ]))
 
 
 class MetaConvModel(MetaModule):
     """4-layer Convolutional Neural Network architecture from [1].
+
     Parameters
     ----------
     in_channels : int
         Number of channels for the input images.
+
     out_features : int
         Number of classes (output of the model).
+
     hidden_size : int (default: 64)
         Number of channels in the intermediate representations.
+
     feature_size : int (default: 64)
         Number of features returned by the convolutional head.
+
     References
     ----------
     .. [1] Finn C., Abbeel P., and Levine, S. (2017). Model-Agnostic Meta-Learning
@@ -70,15 +71,19 @@ class MetaConvModel(MetaModule):
 
 class MetaMLPModel(MetaModule):
     """Multi-layer Perceptron architecture from [1].
+
     Parameters
     ----------
     in_features : int
         Number of input features.
+
     out_features : int
         Number of classes (output of the model).
+
     hidden_sizes : list of int
         Size of the intermediate representations. The length of this list
         corresponds to the number of hidden layers.
+
     References
     ----------
     .. [1] Finn C., Abbeel P., and Levine, S. (2017). Model-Agnostic Meta-Learning
@@ -93,12 +98,12 @@ class MetaMLPModel(MetaModule):
         self.hidden_sizes = hidden_sizes
 
         layer_sizes = [in_features] + hidden_sizes
-        self.features = MetaSequential(OrderedDict([('layer{0}'.format(i + 1),
-                                                     MetaSequential(OrderedDict([
-                                                         ('linear',
-                                                          MetaLinear(hidden_size, layer_sizes[i + 1], bias=True)),
-                                                         ('relu', nn.ReLU())
-                                                     ]))) for (i, hidden_size) in enumerate(layer_sizes[:-1])]))
+        self.features = MetaSequential(OrderedDict([
+            ('layer{0}'.format(i + 1), MetaSequential(OrderedDict([
+                ('linear', MetaLinear(hidden_size, layer_sizes[i + 1], bias=True)),
+                ('relu', nn.ReLU())
+            ]))) for (i, hidden_size) in enumerate(layer_sizes[:-1])
+        ]))
         self.classifier = MetaLinear(hidden_sizes[-1], out_features, bias=True)
 
     def forward(self, inputs, params=None):
@@ -108,13 +113,11 @@ class MetaMLPModel(MetaModule):
 
 
 def ModelConvOmniglot(out_features, hidden_size=64):
-    return MetaConvModel(1, out_features, hidden_size=hidden_size,
-                         feature_size=hidden_size)
+    return MetaConvModel(1, out_features, hidden_size=hidden_size, feature_size=hidden_size)
 
 
 def ModelConvMiniImagenet(out_features, hidden_size=64):
-    return MetaConvModel(3, out_features, hidden_size=hidden_size,
-                         feature_size=5 * 5 * hidden_size)
+    return MetaConvModel(3, out_features, hidden_size=hidden_size, feature_size=5 * 5 * hidden_size)
 
 
 def ModelMLPSinusoid(hidden_sizes=[40, 40]):

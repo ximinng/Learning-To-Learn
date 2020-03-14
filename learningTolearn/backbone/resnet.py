@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-   Description : 
+   Description :
+        ResNet for ImageNet-1K, implemented in PyTorch.
+        Original paper: 'Deep Residual Learning for Image Recognition,' https://arxiv.org/abs/1512.03385.
    Author :        xxm
-"""
-"""
-    ResNet for ImageNet-1K, implemented in PyTorch.
-    Original paper: 'Deep Residual Learning for Image Recognition,' https://arxiv.org/abs/1512.03385.
 """
 
 __all__ = ['ResNet', 'resnet10', 'resnet12', 'resnet14', 'resnetbc14b', 'resnet16', 'resnet18_wd4', 'resnet18_wd2',
@@ -279,7 +277,6 @@ def get_resnet(blocks,
                conv1_stride=True,
                width_scale=1.0,
                model_name=None,
-               pretrained=False,
                root=os.path.join("~", ".torch", "models"),
                **kwargs):
     """
@@ -360,15 +357,6 @@ def get_resnet(blocks,
         bottleneck=bottleneck,
         conv1_stride=conv1_stride,
         **kwargs)
-
-    if pretrained:
-        if (model_name is None) or (not model_name):
-            raise ValueError("Parameter `model_name` should be properly initialized for loading pretrained model.")
-        from .model_store import download_model
-        download_model(
-            net=net,
-            model_name=model_name,
-            local_model_store_dir_path=root)
 
     return net
 

@@ -13,6 +13,7 @@ from torchvision.transforms import ToTensor, Resize, Compose
 
 from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid
 from learningTolearn.util import ToTensor1D
+from learningTolearn.backbone.resnet import resnet10, resnet12
 
 Benchmark = namedtuple('Benchmark',
                        'meta_train_dataset meta_val_dataset '
@@ -102,7 +103,9 @@ def get_benchmark_by_name(name,
                                          meta_test=True,
                                          dataset_transform=dataset_transform)
 
-        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        # TODO: change backbone here
+        model = resnet12()
+        # model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
         loss_function = F.cross_entropy
 
     elif name == 'tieredimagenet':
@@ -128,6 +131,7 @@ def get_benchmark_by_name(name,
                                            meta_test=True,
                                            dataset_transform=dataset_transform)
 
+        model = resnet12()
         model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
         loss_function = F.cross_entropy
 

@@ -3,6 +3,12 @@
    Description : 
    Author :        xxm
 """
-from .model import ModelConvMiniImagenet, ModelConvOmniglot, ModelMLPSinusoid
+from .conv import ModelConvMiniImagenet, ModelConvOmniglot
+from .mlp import ModelMLPSinusoid
+from .resnet import resnet10, resnet12, resnet14, resnetbc14b, resnet16
 
-__all__ = ['ModelConvMiniImagenet', 'ModelConvOmniglot', 'ModelMLPSinusoid']
+__all__ = [
+    'ModelConvMiniImagenet', 'ModelConvOmniglot',
+    'ModelMLPSinusoid',
+    'resnet10', 'resnet12', 'resnet14', 'resnetbc14b', 'resnet16'
+]

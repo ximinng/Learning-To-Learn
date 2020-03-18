@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Prototypical Networks')
 
-    parser.add_argument('folder', type=str,
+    parser.add_argument('folder', type=str, default='/few-shot-datasets',
                         help='Path to the folder the data is downloaded to.')
     parser.add_argument('--num-shots', type=int, default=5,
                         help='Number of examples per class (k in "k-shot", default: 5).')

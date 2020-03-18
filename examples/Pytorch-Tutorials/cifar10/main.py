@@ -6,7 +6,7 @@ from torch import nn, optim
 
 from lenet5 import Lenet5
 
-from resnet import ResNet18
+from resnet18 import ResNet18
 
 
 def main():

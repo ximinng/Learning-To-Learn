@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-   Description :   conv model
+   Description :   Conv and MLP model
    Author :        xxm
 """
 import torch.nn as nn
@@ -8,6 +8,38 @@ import torch.nn as nn
 from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaConv2d, MetaBatchNorm2d, MetaSequential, MetaLinear
 from torchmeta.modules.utils import get_subdict
+
+"""
+MetaConvModel(
+  (features): MetaSequential(
+    (layer1): MetaSequential(
+      (conv): MetaConv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
+      (relu): ReLU()
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (layer2): MetaSequential(
+      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
+      (relu): ReLU()
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (layer3): MetaSequential(
+      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
+      (relu): ReLU()
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+    (layer4): MetaSequential(
+      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
+      (relu): ReLU()
+      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+    )
+  )
+  (classifier): MetaLinear(in_features=1600, out_features=5, bias=True)
+)
+"""
 
 
 def conv_block(in_channels, out_channels, **kwargs):
@@ -28,7 +60,7 @@ class MetaConvModel(MetaModule):
         Number of channels for the input images.
 
     out_features : int
-        Number of classes (output of the model).
+        Number of classes (num of ways in few-shot set).
 
     hidden_size : int (default: 64)
         Number of channels in the intermediate representations.
@@ -69,60 +101,9 @@ class MetaConvModel(MetaModule):
         return logits
 
 
-class MetaMLPModel(MetaModule):
-    """Multi-layer Perceptron architecture from [1].
-
-    Parameters
-    ----------
-    in_features : int
-        Number of input features.
-
-    out_features : int
-        Number of classes (output of the model).
-
-    hidden_sizes : list of int
-        Size of the intermediate representations. The length of this list
-        corresponds to the number of hidden layers.
-
-    References
-    ----------
-    .. [1] Finn C., Abbeel P., and Levine, S. (2017). Model-Agnostic Meta-Learning
-           for Fast Adaptation of Deep Networks. International Conference on
-           Machine Learning (ICML) (https://arxiv.org/abs/1703.03400)
-    """
-
-    def __init__(self, in_features, out_features, hidden_sizes):
-        super(MetaMLPModel, self).__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.hidden_sizes = hidden_sizes
-
-        layer_sizes = [in_features] + hidden_sizes
-        self.features = MetaSequential(OrderedDict([
-            ('layer{0}'.format(i + 1), MetaSequential(OrderedDict([
-                ('linear', MetaLinear(hidden_size, layer_sizes[i + 1], bias=True)),
-                ('relu', nn.ReLU())
-            ]))) for (i, hidden_size) in enumerate(layer_sizes[:-1])
-        ]))
-        self.classifier = MetaLinear(hidden_sizes[-1], out_features, bias=True)
-
-    def forward(self, inputs, params=None):
-        features = self.features(inputs, params=get_subdict(params, 'features'))
-        logits = self.classifier(features, params=get_subdict(params, 'classifier'))
-        return logits
-
-
 def ModelConvOmniglot(out_features, hidden_size=64):
     return MetaConvModel(1, out_features, hidden_size=hidden_size, feature_size=hidden_size)
 
 
 def ModelConvMiniImagenet(out_features, hidden_size=64):
     return MetaConvModel(3, out_features, hidden_size=hidden_size, feature_size=5 * 5 * hidden_size)
-
-
-def ModelMLPSinusoid(hidden_sizes=[40, 40]):
-    return MetaMLPModel(1, 1, hidden_sizes)
-
-
-if __name__ == '__main__':
-    model = ModelMLPSinusoid()

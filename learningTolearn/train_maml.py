@@ -12,7 +12,7 @@ from learningTolearn.method.optimization import ModelAgnosticMetaLearning
 
 def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-    device = torch.device('cuda:2' if args.use_cuda and torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     if (args.output_folder is not None):  # args:'output_folder' 参数非空
         # 存放结果的文件夹不存在
@@ -40,7 +40,6 @@ def main(args):
                                       args.num_shots,
                                       args.num_shots_test,
                                       hidden_size=args.hidden_size)
-
     # 训练集
     meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
                                                 batch_size=args.batch_size,

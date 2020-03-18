@@ -4,6 +4,7 @@
    Author :        xxm
 """
 import torch.nn.functional as F
+import logging
 
 from collections import namedtuple
 from torchmeta.datasets import Omniglot, MiniImagenet, TieredImagenet
@@ -11,9 +12,8 @@ from torchmeta.toy import Sinusoid
 from torchmeta.transforms import ClassSplitter, Categorical, Rotation
 from torchvision.transforms import ToTensor, Resize, Compose
 
-from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid
+from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid, resnet10, resnet12
 from learningTolearn.util import ToTensor1D
-from learningTolearn.backbone.resnet import resnet10, resnet12
 
 Benchmark = namedtuple('Benchmark',
                        'meta_train_dataset meta_val_dataset '
@@ -26,6 +26,29 @@ def get_benchmark_by_name(name,
                           num_shots,
                           num_shots_test,
                           hidden_size=None):
+    """get_benchmark_by_name
+
+      Parameters
+      ----------
+      name : `str` (like `omniglot`)
+          The name of datasets.
+
+      folder : string
+          Root directory where the dataset folder `omniglot` exists.
+
+      num_ways : float (default: 0.1)
+          Number of classes per task (N in "N-way").
+
+      num_shots : bool (default: False)
+          Number of training example per class (k in "k-shot").
+
+      num_shots_test : bool (default: False)
+          Number of test example per class.
+
+      hidden_size:
+          Number of channels in each convolution layer of the neural network.
+      """
+    logging.info("datasets: {}".format(name))
     dataset_transform = ClassSplitter(shuffle=True,
                                       num_train_per_class=num_shots,
                                       num_test_per_class=num_shots_test)
@@ -104,8 +127,9 @@ def get_benchmark_by_name(name,
                                          dataset_transform=dataset_transform)
 
         # TODO: change backbone here
-        model = resnet12()
+        model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
         # model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        # logging.info("backbone is: {}".format("resnet 12"))
         loss_function = F.cross_entropy
 
     elif name == 'tieredimagenet':
@@ -131,7 +155,8 @@ def get_benchmark_by_name(name,
                                            meta_test=True,
                                            dataset_transform=dataset_transform)
 
-        model = resnet12()
+        # model = resnet12()
+        print("backbone is resnet")
         model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
         loss_function = F.cross_entropy
 

@@ -14,7 +14,7 @@ __all__ = ['ResNet', 'resnet10', 'resnet12', 'resnet14', 'resnetbc14b', 'resnet1
 import os
 import torch.nn as nn
 import torch.nn.init as init
-from learningTolearn.backbone.common import conv1x1_block, conv3x3_block, conv7x7_block
+from learningTolearn.backbone.common import conv1x1_block, conv3x3_block, conv5x5_block, conv7x7_block
 
 
 class ResBlock(nn.Module):
@@ -186,11 +186,8 @@ class ResInitBlock(nn.Module):
         self.conv = conv7x7_block(
             in_channels=in_channels,
             out_channels=out_channels,
-            stride=2)
-        self.pool = nn.MaxPool2d(
-            kernel_size=3,
-            stride=2,
-            padding=1)
+            stride=2, padding=3)
+        self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
     def forward(self, x):
         x = self.conv(x)
@@ -232,29 +229,25 @@ class ResNet(nn.Module):
         self.num_classes = num_classes
 
         self.features = nn.Sequential()
-        self.features.add_module("init_block", ResInitBlock(
-            in_channels=in_channels,
-            out_channels=init_block_channels))
+        self.features.add_module("init_block", ResInitBlock(in_channels=in_channels,
+                                                            out_channels=init_block_channels))
         in_channels = init_block_channels
         for i, channels_per_stage in enumerate(channels):
             stage = nn.Sequential()
             for j, out_channels in enumerate(channels_per_stage):
                 stride = 2 if (j == 0) and (i != 0) else 1
-                stage.add_module("unit{}".format(j + 1), ResUnit(
-                    in_channels=in_channels,
-                    out_channels=out_channels,
-                    stride=stride,
-                    bottleneck=bottleneck,
-                    conv1_stride=conv1_stride))
+                stage.add_module("unit{}".format(j + 1), ResUnit(in_channels=in_channels,
+                                                                 out_channels=out_channels,
+                                                                 stride=stride,
+                                                                 bottleneck=bottleneck,
+                                                                 conv1_stride=conv1_stride))
                 in_channels = out_channels
             self.features.add_module("stage{}".format(i + 1), stage)
-        self.features.add_module("final_pool", nn.AvgPool2d(
-            kernel_size=7,
-            stride=1))
+        self.features.add_module("final_pool", nn.AvgPool2d(kernel_size=7,  # default: kernel_size=7
+                                                            stride=1))
 
-        self.output = nn.Linear(
-            in_features=in_channels,
-            out_features=num_classes)
+        self.output = nn.Linear(in_features=in_channels,
+                                out_features=num_classes)
 
         self._init_params()
 
@@ -268,7 +261,7 @@ class ResNet(nn.Module):
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
-        x = self.output(x)  # logits
+        x = self.output(x)
         return x
 
 
@@ -723,5 +716,21 @@ def _test():
         assert (tuple(y.size()) == (1, 1000))
 
 
+def main():
+    import torch
+    blk = ResBlock(64, 128, stride=1)
+    tmp = torch.randn(2, 64, 32, 32)
+    out = blk(tmp)
+    print('block:', out.shape)
+
+    x = torch.randn(100, 3, 84, 84)
+    # model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways)
+    # model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
+    model = resnet101(in_channels=3, in_size=(84, 84), num_classes=5)
+    out = model(x)
+    print('resnet:', out.shape)
+
+
 if __name__ == "__main__":
-    _test()
+    main()
+    # print(resnet10())

@@ -12,6 +12,7 @@ from torchmeta.utils.data import BatchMetaDataLoader
 
 from learningTolearn.method import PrototypicalNetwork
 from learningTolearn.util import get_prototypes, prototypical_loss
+from learningTolearn.backbone import resnet10
 
 
 def get_accuracy(prototypes, embeddings, targets):
@@ -45,6 +46,7 @@ def train(args):
     dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
                                      shuffle=True, num_workers=args.num_workers)
 
+    # model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways)
     model = PrototypicalNetwork(1, args.embedding_size, hidden_size=args.hidden_size)
     model.to(device=args.device)
     model.train()
@@ -56,8 +58,8 @@ def train(args):
             model.zero_grad()
 
             train_inputs, train_targets = batch['train']
-            train_inputs = train_inputs.to(device=args.device)
-            train_targets = train_targets.to(device=args.device)
+            train_inputs = train_inputs.to(device=args.device)  # [16, 25, 1, 28, 28]
+            train_targets = train_targets.to(device=args.device)  # [16, 25]
             train_embeddings = model(train_inputs)
 
             test_inputs, test_targets = batch['test']

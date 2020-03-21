@@ -215,8 +215,7 @@ class ModelAgnosticMetaLearning(object):
             for results in self.evaluate_iter(dataloader, max_batches=max_batches):
                 pbar.update(1)
                 count += 1
-                mean_outer_loss += (results['mean_outer_loss']
-                                    - mean_outer_loss) / count
+                mean_outer_loss += (results['mean_outer_loss'] - mean_outer_loss) / count
                 postfix = {'loss': '{0:.4f}'.format(mean_outer_loss)}
                 if 'accuracies_after' in results:
                     mean_accuracy += (np.mean(results['accuracies_after'])

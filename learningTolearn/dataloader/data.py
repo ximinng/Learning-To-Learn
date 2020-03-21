@@ -127,8 +127,8 @@ def get_benchmark_by_name(name,
                                          dataset_transform=dataset_transform)
 
         # TODO: change backbone here
-        model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
-        # model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        # model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
+        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
         # logging.info("backbone is: {}".format("resnet 12"))
         loss_function = F.cross_entropy
 

@@ -243,8 +243,8 @@ class ResNet(nn.Module):
                                                                  conv1_stride=conv1_stride))
                 in_channels = out_channels
             self.features.add_module("stage{}".format(i + 1), stage)
-        self.features.add_module("final_pool", nn.AvgPool2d(kernel_size=7,  # default: kernel_size=7
-                                                            stride=1))
+        self.features.add_module("final_pool", nn.AdaptiveAvgPool2d(1))
+        # self.features.add_module("final_pool", nn.AvgPool2d(kernel_size=7, stride=1))
 
         self.output = nn.Linear(in_features=in_channels,
                                 out_features=num_classes)
@@ -724,9 +724,9 @@ def main():
     print('block:', out.shape)
 
     x = torch.randn(100, 3, 84, 84)
-    # model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways)
+    model = resnet10(in_channels=3, in_size=(84, 84), num_classes=5)
     # model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
-    model = resnet101(in_channels=3, in_size=(84, 84), num_classes=5)
+    # model = resnet101(in_channels=3, in_size=(84, 84), num_classes=5)
     out = model(x)
     print('resnet:', out.shape)
 

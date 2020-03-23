@@ -14,10 +14,13 @@ __all__ = ['ResNet', 'resnet10', 'resnet12', 'resnet14', 'resnetbc14b', 'resnet1
 import os
 import torch.nn as nn
 import torch.nn.init as init
-from learningTolearn.backbone.common import conv1x1_block, conv3x3_block, conv5x5_block, conv7x7_block
+from torchmeta.modules import (MetaModule, MetaSequential, MetaLinear)
+from torchmeta.modules.utils import get_subdict
+
+from learningTolearn.backbone.common import (conv1x1_block, conv3x3_block, conv7x7_block)
 
 
-class ResBlock(nn.Module):
+class ResBlock(MetaModule):
     """
     Simple ResNet block for residual path in ResNet unit.
     Parameters:
@@ -33,24 +36,33 @@ class ResBlock(nn.Module):
     def __init__(self,
                  in_channels,
                  out_channels,
-                 stride):
+                 stride,
+                 mode=''):
         super(ResBlock, self).__init__()
+        self.mode = mode
+
         self.conv1 = conv3x3_block(
             in_channels=in_channels,
             out_channels=out_channels,
-            stride=stride)
+            stride=stride,
+            mode=self.mode)
         self.conv2 = conv3x3_block(
             in_channels=out_channels,
             out_channels=out_channels,
-            activation=None)
+            activation=None,
+            mode=self.mode)
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
+    def forward(self, x, params=None):
+        if self.mode == 'maml':
+            x = self.conv1(x, params=get_subdict(params, 'conv1'))
+            x = self.conv2(x, params=get_subdict(params, 'conv2'))
+        else:
+            x = self.conv1(x)
+            x = self.conv2(x)
         return x
 
 
-class ResBottleneck(nn.Module):
+class ResBottleneck(MetaModule):
     """
     ResNet bottleneck block for residual path in ResNet unit.
     Parameters:
@@ -78,33 +90,43 @@ class ResBottleneck(nn.Module):
                  padding=1,
                  dilation=1,
                  conv1_stride=False,
-                 bottleneck_factor=4):
+                 bottleneck_factor=4,
+                 mode=''):
         super(ResBottleneck, self).__init__()
         mid_channels = out_channels // bottleneck_factor
+        self.mode = mode
 
         self.conv1 = conv1x1_block(
             in_channels=in_channels,
             out_channels=mid_channels,
-            stride=(stride if conv1_stride else 1))
+            stride=(stride if conv1_stride else 1),
+            mode=self.mode)
         self.conv2 = conv3x3_block(
             in_channels=mid_channels,
             out_channels=mid_channels,
             stride=(1 if conv1_stride else stride),
             padding=padding,
-            dilation=dilation)
+            dilation=dilation,
+            mode=self.mode)
         self.conv3 = conv1x1_block(
             in_channels=mid_channels,
             out_channels=out_channels,
-            activation=None)
+            activation=None,
+            mode=self.mode)
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
+    def forward(self, x, params=None):
+        if self.mode == 'maml':
+            x = self.conv1(x, params=get_subdict(params, 'conv1'))
+            x = self.conv2(x, params=get_subdict(params, 'conv2'))
+            x = self.conv3(x, params=get_subdict(params, 'conv3'))
+        else:
+            x = self.conv1(x)
+            x = self.conv2(x)
+            x = self.conv3(x)
         return x
 
 
-class ResUnit(nn.Module):
+class ResUnit(MetaModule):
     """
     ResNet unit with residual connection.
     Parameters:
@@ -132,9 +154,11 @@ class ResUnit(nn.Module):
                  padding=1,
                  dilation=1,
                  bottleneck=True,
-                 conv1_stride=False):
+                 conv1_stride=False,
+                 mode=''):
         super(ResUnit, self).__init__()
         self.resize_identity = (in_channels != out_channels) or (stride != 1)
+        self.mode = mode
 
         if bottleneck:
             self.body = ResBottleneck(
@@ -143,32 +167,43 @@ class ResUnit(nn.Module):
                 stride=stride,
                 padding=padding,
                 dilation=dilation,
-                conv1_stride=conv1_stride)
+                conv1_stride=conv1_stride,
+                mode=mode)
         else:
             self.body = ResBlock(
                 in_channels=in_channels,
                 out_channels=out_channels,
-                stride=stride)
+                stride=stride,
+                mode=mode)
+
         if self.resize_identity:
             self.identity_conv = conv1x1_block(
                 in_channels=in_channels,
                 out_channels=out_channels,
                 stride=stride,
-                activation=None)
+                activation=None,
+                mode=mode)
         self.activ = nn.ReLU(inplace=True)
 
-    def forward(self, x):
+    def forward(self, x, params=None):
         if self.resize_identity:
-            identity = self.identity_conv(x)
+            if self.mode == 'maml':
+                identity = self.identity_conv(x, params=get_subdict(params, 'identity_conv'))
+            else:
+                identity = self.identity_conv(x)
         else:
             identity = x
-        x = self.body(x)
+
+        if self.mode == 'maml':
+            x = self.body(x, params=get_subdict(params, 'body'))
+        else:
+            x = self.body(x)
         x = x + identity
         x = self.activ(x)
         return x
 
 
-class ResInitBlock(nn.Module):
+class ResInitBlock(MetaModule):
     """
     ResNet specific initial block.
     Parameters:
@@ -181,21 +216,28 @@ class ResInitBlock(nn.Module):
 
     def __init__(self,
                  in_channels,
-                 out_channels):
+                 out_channels,
+                 mode=''):
         super(ResInitBlock, self).__init__()
+        self.mode = mode
         self.conv = conv7x7_block(
             in_channels=in_channels,
             out_channels=out_channels,
-            stride=2, padding=3)
+            stride=2, padding=3,
+            mode=mode)
         self.pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.pool(x)
+    def forward(self, x, params=None):
+        if self.mode == 'maml':
+            x = self.conv(x, params=get_subdict(params, 'conv'))
+            x = self.pool(x)
+        else:
+            x = self.conv(x)
+            x = self.pool(x)
         return x
 
 
-class ResNet(nn.Module):
+class ResNet(MetaModule):
     """
     ResNet model from 'Deep Residual Learning for Image Recognition,' https://arxiv.org/abs/1512.03385.
     Parameters:
@@ -221,33 +263,43 @@ class ResNet(nn.Module):
                  init_block_channels,
                  bottleneck,
                  conv1_stride,
+                 mode='',
                  in_channels=3,
                  in_size=(224, 224),
                  num_classes=1000):
         super(ResNet, self).__init__()
         self.in_size = in_size
         self.num_classes = num_classes
+        self.mode = mode
 
-        self.features = nn.Sequential()
-        self.features.add_module("init_block", ResInitBlock(in_channels=in_channels,
-                                                            out_channels=init_block_channels))
+        self.features = MetaSequential()
+        self.features.add_module("init_block",
+                                 ResInitBlock(in_channels=in_channels,
+                                              out_channels=init_block_channels,
+                                              mode=self.mode))
         in_channels = init_block_channels
         for i, channels_per_stage in enumerate(channels):
-            stage = nn.Sequential()
+            stage = MetaSequential()
             for j, out_channels in enumerate(channels_per_stage):
                 stride = 2 if (j == 0) and (i != 0) else 1
-                stage.add_module("unit{}".format(j + 1), ResUnit(in_channels=in_channels,
-                                                                 out_channels=out_channels,
-                                                                 stride=stride,
-                                                                 bottleneck=bottleneck,
-                                                                 conv1_stride=conv1_stride))
+                stage.add_module("unit{}".format(j + 1),
+                                 ResUnit(in_channels=in_channels,
+                                         out_channels=out_channels,
+                                         stride=stride,
+                                         bottleneck=bottleneck,
+                                         conv1_stride=conv1_stride,
+                                         mode=self.mode))
                 in_channels = out_channels
             self.features.add_module("stage{}".format(i + 1), stage)
         self.features.add_module("final_pool", nn.AdaptiveAvgPool2d(1))
         # self.features.add_module("final_pool", nn.AvgPool2d(kernel_size=7, stride=1))
 
-        self.output = nn.Linear(in_features=in_channels,
-                                out_features=num_classes)
+        if self.mode == 'maml':
+            self.output = MetaLinear(in_features=in_channels,
+                                     out_features=num_classes)
+        else:
+            self.output = nn.Linear(in_features=in_channels,
+                                    out_features=num_classes)
 
         self._init_params()
 
@@ -258,10 +310,15 @@ class ResNet(nn.Module):
                 if module.bias is not None:
                     init.constant_(module.bias, 0)
 
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.output(x)
+    def forward(self, x, params=None):
+        if self.mode == 'maml':
+            x = self.features(x, params=get_subdict(params, 'features'))
+            x = x.view(x.size(0), -1)
+            x = self.output(x, params=get_subdict(params, 'output'))
+        else:
+            x = self.features(x)
+            x = x.view(x.size(0), -1)
+            x = self.output(x)
         return x
 
 
@@ -269,6 +326,7 @@ def get_resnet(blocks,
                bottleneck=None,
                conv1_stride=True,
                width_scale=1.0,
+               mode='',
                model_name=None,
                root=os.path.join("~", ".torch", "models"),
                **kwargs):
@@ -349,6 +407,7 @@ def get_resnet(blocks,
         init_block_channels=init_block_channels,
         bottleneck=bottleneck,
         conv1_stride=conv1_stride,
+        mode=mode,
         **kwargs)
 
     return net
@@ -724,13 +783,13 @@ def main():
     print('block:', out.shape)
 
     x = torch.randn(100, 3, 84, 84)
-    model = resnet10(in_channels=3, in_size=(84, 84), num_classes=5)
+    model = resnet10(in_channels=3, in_size=(84, 84), num_classes=5, mode='maml')
     # model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
     # model = resnet101(in_channels=3, in_size=(84, 84), num_classes=5)
     out = model(x)
     print('resnet:', out.shape)
+    print(model)
 
 
 if __name__ == "__main__":
     main()
-    # print(resnet10())

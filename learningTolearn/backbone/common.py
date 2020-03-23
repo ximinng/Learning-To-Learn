@@ -16,6 +16,8 @@ from inspect import isfunction
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchmeta.modules import MetaModule, MetaSequential, MetaConv2d, MetaBatchNorm2d
+from torchmeta.modules.utils import get_subdict
 
 
 def round_channels(channels,
@@ -279,6 +281,77 @@ class ConvBlock(nn.Module):
         return x
 
 
+class MetaConvBlock(MetaModule):
+    """
+    Meta convolution block with Batch normalization and activation.
+    Weight and
+    Parameters:
+    ----------
+    in_channels : int
+        Number of input channels.
+    out_channels : int
+        Number of output channels.
+    kernel_size : int or tuple/list of 2 int
+        Convolution window size.
+    stride : int or tuple/list of 2 int
+        Strides of the convolution.
+    padding : int or tuple/list of 2 int
+        Padding value for convolution layer.
+    dilation : int or tuple/list of 2 int, default 1
+        Dilation value for convolution layer.
+    groups : int, default 1
+        Number of groups.
+    bias : bool, default False
+        Whether the layer uses a bias vector.
+    use_bn : bool, default True
+        Whether to use BatchNorm layer.
+    bn_eps : float, default 1e-5
+        Small float added to variance in Batch norm.
+    activation : function or str or None, default nn.ReLU(inplace=True)
+        Activation function or name of activation function.
+    """
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride,
+                 padding,
+                 dilation=1,
+                 groups=1,
+                 bias=False,
+                 use_bn=True,
+                 bn_eps=1e-5,
+                 activation=(lambda: nn.ReLU(inplace=True))):
+        super(MetaConvBlock, self).__init__()
+        self.activate = (activation is not None)
+        self.use_bn = use_bn
+
+        self.conv = MetaConv2d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias)
+        if self.use_bn:
+            self.bn = MetaBatchNorm2d(
+                num_features=out_channels,
+                eps=bn_eps)
+        if self.activate:
+            self.activ = get_activation_layer(activation)
+
+    def forward(self, x, params=None):
+        x = self.conv(x, params=get_subdict(params, 'conv'))
+        if self.use_bn:
+            x = self.bn(x, params=get_subdict(params, 'bn'))
+        if self.activate:
+            x = self.activ(x)
+        return x
+
+
 def conv1x1_block(in_channels,
                   out_channels,
                   stride=1,
@@ -287,7 +360,8 @@ def conv1x1_block(in_channels,
                   bias=False,
                   use_bn=True,
                   bn_eps=1e-5,
-                  activation=(lambda: nn.ReLU(inplace=True))):
+                  activation=(lambda: nn.ReLU(inplace=True)),
+                  mode=''):
     """
     1x1 version of the standard convolution block.
     Parameters:
@@ -311,17 +385,30 @@ def conv1x1_block(in_channels,
     activation : function or str or None, default nn.ReLU(inplace=True)
         Activation function or name of activation function.
     """
-    return ConvBlock(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=1,
-        stride=stride,
-        padding=padding,
-        groups=groups,
-        bias=bias,
-        use_bn=use_bn,
-        bn_eps=bn_eps,
-        activation=activation)
+    if mode == 'maml':
+        return MetaConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            bias=bias,
+            use_bn=use_bn,
+            bn_eps=bn_eps,
+            activation=activation)
+    else:
+        return ConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            bias=bias,
+            use_bn=use_bn,
+            bn_eps=bn_eps,
+            activation=activation)
 
 
 def conv3x3_block(in_channels,
@@ -333,7 +420,8 @@ def conv3x3_block(in_channels,
                   bias=False,
                   use_bn=True,
                   bn_eps=1e-5,
-                  activation=(lambda: nn.ReLU(inplace=True))):
+                  activation=(lambda: nn.ReLU(inplace=True)),
+                  mode=''):
     """
     3x3 version of the standard convolution block.
     Parameters:
@@ -359,18 +447,32 @@ def conv3x3_block(in_channels,
     activation : function or str or None, default nn.ReLU(inplace=True)
         Activation function or name of activation function.
     """
-    return ConvBlock(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=3,
-        stride=stride,
-        padding=padding,
-        dilation=dilation,
-        groups=groups,
-        bias=bias,
-        use_bn=use_bn,
-        bn_eps=bn_eps,
-        activation=activation)
+    if mode == 'maml':
+        return MetaConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            use_bn=use_bn,
+            bn_eps=bn_eps,
+            activation=activation)
+    else:
+        return ConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            use_bn=use_bn,
+            bn_eps=bn_eps,
+            activation=activation)
 
 
 def conv5x5_block(in_channels,
@@ -381,7 +483,8 @@ def conv5x5_block(in_channels,
                   groups=1,
                   bias=False,
                   bn_eps=1e-5,
-                  activation=(lambda: nn.ReLU(inplace=True))):
+                  activation=(lambda: nn.ReLU(inplace=True)),
+                  mode=''):
     """
     5x5 version of the standard convolution block.
     Parameters:
@@ -405,17 +508,30 @@ def conv5x5_block(in_channels,
     activation : function or str or None, default nn.ReLU(inplace=True)
         Activation function or name of activation function.
     """
-    return ConvBlock(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=5,
-        stride=stride,
-        padding=padding,
-        dilation=dilation,
-        groups=groups,
-        bias=bias,
-        bn_eps=bn_eps,
-        activation=activation)
+    if mode == 'maml':
+        return MetaConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=5,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            bn_eps=bn_eps,
+            activation=activation)
+    else:
+        return ConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=5,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            bn_eps=bn_eps,
+            activation=activation)
 
 
 def conv7x7_block(in_channels,
@@ -424,7 +540,8 @@ def conv7x7_block(in_channels,
                   padding=3,
                   bias=False,
                   use_bn=True,
-                  activation=(lambda: nn.ReLU(inplace=True))):
+                  activation=(lambda: nn.ReLU(inplace=True)),
+                  mode='maml'):
     """
     7x7 version of the standard convolution block.
     Parameters:
@@ -444,15 +561,26 @@ def conv7x7_block(in_channels,
     activation : function or str or None, default nn.ReLU(inplace=True)
         Activation function or name of activation function.
     """
-    return ConvBlock(
-        in_channels=in_channels,
-        out_channels=out_channels,
-        kernel_size=7,
-        stride=stride,
-        padding=padding,
-        bias=bias,
-        use_bn=use_bn,
-        activation=activation)
+    if mode == 'maml':
+        return MetaSequential(MetaConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=7,
+            stride=stride,
+            padding=padding,
+            bias=bias,
+            use_bn=use_bn,
+            activation=activation))
+    else:
+        return ConvBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=7,
+            stride=stride,
+            padding=padding,
+            bias=bias,
+            use_bn=use_bn,
+            activation=activation)
 
 
 def dwconv_block(in_channels,

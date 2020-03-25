@@ -12,7 +12,7 @@ from torchmeta.toy import Sinusoid
 from torchmeta.transforms import ClassSplitter, Categorical, Rotation
 from torchvision.transforms import ToTensor, Resize, Compose
 
-from learningTolearn.backbone import ModelConvOmniglot, ModelConvMiniImagenet, ModelMLPSinusoid, resnet10, resnet12
+from learningTolearn.backbone import *
 from learningTolearn.util import ToTensor1D
 
 Benchmark = namedtuple('Benchmark',
@@ -25,6 +25,7 @@ def get_benchmark_by_name(name,
                           num_ways,
                           num_shots,
                           num_shots_test,
+                          backbone,
                           hidden_size=None):
     """get_benchmark_by_name
 
@@ -126,9 +127,8 @@ def get_benchmark_by_name(name,
                                          meta_test=True,
                                          dataset_transform=dataset_transform)
 
-        # TODO: change backbone here
-        # model = resnet12(in_channels=3, in_size=(84, 84), num_classes=num_ways)
-        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways, mode='maml')
+        # model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
         # logging.info("backbone is: {}".format("resnet 12"))
         loss_function = F.cross_entropy
 

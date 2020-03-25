@@ -1,6 +1,12 @@
+import sys
+import os
+
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
+
 import torch
 import math
-import os
 import time
 import json
 import logging
@@ -27,6 +33,7 @@ def main(args):
 
         args.folder = os.path.abspath(args.folder)
         args.model_path = os.path.abspath(os.path.join(folder, 'model.th'))
+
         # Save the configuration in a config.json file
         with open(os.path.join(folder, 'config.json'), 'w') as f:
             json.dump(vars(args), f, indent=2)
@@ -39,6 +46,7 @@ def main(args):
                                       args.num_ways,
                                       args.num_shots,
                                       args.num_shots_test,
+                                      args.backbone,
                                       hidden_size=args.hidden_size)
     # 训练集
     meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
@@ -122,6 +130,8 @@ if __name__ == '__main__':
     parser.add_argument('--hidden-size', type=int, default=64,
                         help='Number of channels in each convolution layer of the VGG network '
                              '(default: 64).')
+    parser.add_argument('--backbone', type=str, default='resnet10',
+                        help='The backbone of the few-shot training set. (default: resnet10)')
 
     # Optimization
     parser.add_argument('--batch-size', type=int, default=25,

@@ -54,29 +54,8 @@ def update_parameters(model, loss, params=None, step_size=0.5, first_order=False
     return out
 
 
-def get_accuracy(logits, targets):
-    """Compute the accuracy (after adaptation) of MAML on the test/query points
-
-    Parameters
-    ----------
-    logits : `torch.FloatTensor` instance
-        Outputs/logits of the model on the query points. This tensor has shape
-        `(num_examples, num_classes)`.
-    targets : `torch.LongTensor` instance
-        A tensor containing the targets of the query points. This tensor has 
-        shape `(num_examples,)`.
-
-    Returns
-    -------
-    accuracy : `torch.FloatTensor` instance
-        Mean accuracy on the query points
-    """
-    _, predictions = torch.max(logits, dim=-1)
-    return torch.mean(predictions.eq(targets).float())
-
-
 def compute_accuracy(logits, targets):
-    """Compute the accuracy"""
+    """Compute the accuracy (used by MAML)"""
     with torch.no_grad():
         _, predictions = torch.max(logits, dim=1)
         accuracy = torch.mean(predictions.eq(targets).float())

@@ -263,14 +263,16 @@ class ResNet(MetaModule):
                  init_block_channels,
                  bottleneck,
                  conv1_stride,
-                 mode='',
                  in_channels=3,
                  in_size=(224, 224),
-                 num_classes=1000):
+                 num_classes=1000,
+                 mode='',
+                 linear=True):
         super(ResNet, self).__init__()
         self.in_size = in_size
         self.num_classes = num_classes
         self.mode = mode
+        self.linear = linear
 
         self.features = MetaSequential()
         self.features.add_module("init_block",
@@ -314,11 +316,13 @@ class ResNet(MetaModule):
         if self.mode == 'maml':
             x = self.features(x, params=get_subdict(params, 'features'))
             x = x.view(x.size(0), -1)
-            x = self.output(x, params=get_subdict(params, 'output'))
+            if self.linear:
+                x = self.output(x, params=get_subdict(params, 'output'))
         else:
             x = self.features(x)
             x = x.view(x.size(0), -1)
-            x = self.output(x)
+            if self.linear:
+                x = self.output(x)
         return x
 
 
@@ -327,6 +331,7 @@ def get_resnet(blocks,
                conv1_stride=True,
                width_scale=1.0,
                mode='',
+               linear=True,
                model_name=None,
                root=os.path.join("~", ".torch", "models"),
                **kwargs):
@@ -408,6 +413,7 @@ def get_resnet(blocks,
         bottleneck=bottleneck,
         conv1_stride=conv1_stride,
         mode=mode,
+        linear=linear,
         **kwargs)
 
     return net
@@ -775,7 +781,7 @@ def _test():
         assert (tuple(y.size()) == (1, 1000))
 
 
-def main():
+def normal_dataset_test():
     import torch
     blk = ResBlock(64, 128, stride=1)
     tmp = torch.randn(2, 64, 32, 32)
@@ -791,5 +797,16 @@ def main():
     print(model)
 
 
+def meta_learning_set_test():
+    import torch
+    x_single_channel = torch.rand(25, 1, 28, 28)
+    x = torch.rand(16, 25, 3, 84, 84)
+
+    model = resnet10(in_channels=1, in_size=(28, 28), num_classes=5, linear=False)
+    out = model(x_single_channel)
+    print(out.shape)
+
+
 if __name__ == "__main__":
-    main()
+    # normal_dataset_test()
+    meta_learning_set_test()

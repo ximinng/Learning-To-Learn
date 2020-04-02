@@ -94,24 +94,23 @@ class MetaConvModel(MetaModule):
             ('layer4', conv_block(hidden_size, hidden_size, kernel_size=3,
                                   stride=1, padding=1, bias=True))
         ]))
-        self.classifier = MetaLinear(feature_size, out_features, bias=True)
+
+        self.classifier = MetaLinear(feature_size, out_features)
 
     def forward(self, inputs, params=None):
         features = self.features(inputs, params=get_subdict(params, 'features'))
         features = features.view((features.size(0), -1))
         logits = self.classifier(features, params=get_subdict(params, 'classifier'))
-        print(logits.shape)
-        # 5-way 1-shot
-        # torch.Size([75, 5])
-        # torch.Size([5, 5])
         return logits
 
 
 def ModelConvOmniglot(out_features, hidden_size=64):
-    return MetaConvModel(1, out_features, hidden_size=hidden_size,
+    return MetaConvModel(1, out_features,
+                         hidden_size=hidden_size,
                          feature_size=hidden_size)
 
 
 def ModelConvMiniImagenet(out_features, hidden_size=64):
-    return MetaConvModel(3, out_features, hidden_size=hidden_size,
+    return MetaConvModel(3, out_features,
+                         hidden_size=hidden_size,
                          feature_size=5 * 5 * hidden_size)

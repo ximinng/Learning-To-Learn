@@ -10,34 +10,8 @@ from tqdm import tqdm
 from torchmeta.datasets.helpers import omniglot
 from torchmeta.utils.data import BatchMetaDataLoader
 
-from learningTolearn.method import PrototypicalNetwork
-from learningTolearn.util import get_prototypes, prototypical_loss
+from learningTolearn.method.metric import get_prototypes, get_accuracy, prototypical_loss
 from learningTolearn.backbone import resnet10
-
-
-def get_accuracy(prototypes, embeddings, targets):
-    """Compute the accuracy of the prototypical network on the test/query points.
-
-    Parameters
-    ----------
-    prototypes : `torch.FloatTensor` instance
-        A tensor containing the prototypes for each class. This tensor has shape
-        `(meta_batch_size, num_classes, embedding_size)`.
-    embeddings : `torch.FloatTensor` instance
-        A tensor containing the embeddings of the query points. This tensor has
-        shape `(meta_batch_size, num_examples, embedding_size)`.
-    targets : `torch.LongTensor` instance
-        A tensor containing the targets of the query points. This tensor has
-        shape `(meta_batch_size, num_examples)`.
-
-    Returns
-    -------
-    accuracy : `torch.FloatTensor` instance
-        Mean accuracy on the query points.
-    """
-    sq_distances = torch.sum((prototypes.unsqueeze(1) - embeddings.unsqueeze(2)) ** 2, dim=-1)
-    _, predictions = torch.min(sq_distances, dim=-1)
-    return torch.mean(predictions.eq(targets).float())
 
 
 def train(args):
@@ -46,8 +20,8 @@ def train(args):
     dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
                                      shuffle=True, num_workers=args.num_workers)
 
-    # model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways)
-    model = PrototypicalNetwork(1, args.embedding_size, hidden_size=args.hidden_size)
+    model = resnet10(in_channels=1, in_size=(28, 28), num_classes=args.num_ways)
+    # model = PrototypicalNetwork(1, args.embedding_size, hidden_size=args.hidden_size)
     model.to(device=args.device)
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -59,6 +33,7 @@ def train(args):
 
             train_inputs, train_targets = batch['train']
             train_inputs = train_inputs.to(device=args.device)  # [16, 25, 1, 28, 28]
+            print(train_inputs.shape)
             train_targets = train_targets.to(device=args.device)  # [16, 25]
             train_embeddings = model(train_inputs)
 
@@ -120,6 +95,6 @@ if __name__ == '__main__':
                         help='Use CUDA if available.')
 
     args = parser.parse_args()
-    args.device = torch.device('cuda' if args.use_cuda and torch.cuda.is_available() else 'cpu')
+    args.device = torch.device('cuda:3' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     train(args)

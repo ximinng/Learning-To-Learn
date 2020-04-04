@@ -18,7 +18,7 @@ from learningTolearn.method.optimization import ModelAgnosticMetaLearning
 
 def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-    device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:3' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     if (args.output_folder is not None):  # args:'output_folder' 参数非空
         # 存放结果的文件夹不存在

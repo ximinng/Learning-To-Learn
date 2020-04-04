@@ -127,9 +127,9 @@ def get_benchmark_by_name(name,
                                          meta_test=True,
                                          dataset_transform=dataset_transform)
 
-        # model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways, mode='maml')
-        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
-        # logging.info("backbone is: {}".format("resnet 12"))
+        # model = ModelConv(num_ways, hidden_size=hidden_size)
+        model = resnet10(in_channels=3, in_size=(84, 84), num_classes=num_ways, mode='maml')
+        logging.info("backbone is: {}".format("resnet12"))
         loss_function = F.cross_entropy
 
     elif name == 'tieredimagenet':
@@ -155,9 +155,8 @@ def get_benchmark_by_name(name,
                                            meta_test=True,
                                            dataset_transform=dataset_transform)
 
-        # model = resnet12()
-        print("backbone is resnet")
-        model = ModelConvMiniImagenet(num_ways, hidden_size=hidden_size)
+        model = ModelConv(num_ways, hidden_size=hidden_size)
+        logging.info("backbone is: {}".format("conv4"))
         loss_function = F.cross_entropy
 
     else:

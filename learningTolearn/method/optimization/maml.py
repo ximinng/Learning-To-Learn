@@ -83,8 +83,7 @@ class ModelAgnosticMetaLearning(object):
 
         if per_param_step_size:
             self.step_size = OrderedDict(
-                (name, torch.tensor(step_size,
-                                    dtype=param.dtype, device=self.device,
+                (name, torch.tensor(step_size, dtype=param.dtype, device=self.device,
                                     requires_grad=learn_step_size))
                 for (name, param) in model.meta_named_parameters())
         else:
@@ -110,8 +109,7 @@ class ModelAgnosticMetaLearning(object):
         is_classification_task = (not test_targets.dtype.is_floating_point)
         results = {
             'num_tasks': num_tasks,
-            'inner_losses': np.zeros((self.num_adaptation_steps,
-                                      num_tasks), dtype=np.float32),
+            'inner_losses': np.zeros((self.num_adaptation_steps, num_tasks), dtype=np.float32),
             'outer_losses': np.zeros((num_tasks,), dtype=np.float32),
             'mean_outer_loss': 0.
         }
@@ -140,8 +138,7 @@ class ModelAgnosticMetaLearning(object):
                 mean_outer_loss += outer_loss
 
             if is_classification_task:
-                results['accuracies_after'][task_id] = compute_accuracy(
-                    test_logits, test_targets)
+                results['accuracies_after'][task_id] = compute_accuracy(test_logits, test_targets)
 
         mean_outer_loss.div_(num_tasks)
         results['mean_outer_loss'] = mean_outer_loss.item()
@@ -171,14 +168,15 @@ class ModelAgnosticMetaLearning(object):
 
         return params, results
 
-    def train(self, dataloader, max_batches=500, verbose=True, **kwargs):
+    def train(self, dataloader, max_batches=200, verbose=True, **kwargs):
         with tqdm(total=max_batches, disable=not verbose, **kwargs) as pbar:
             for results in self.train_iter(dataloader, max_batches=max_batches):
                 pbar.update(1)
                 postfix = {'loss': '{0:.4f}'.format(results['mean_outer_loss'])}
                 if 'accuracies_after' in results:
                     postfix['accuracy'] = '{0:.4f}'.format(
-                        np.mean(results['accuracies_after']))
+                        np.mean(results['accuracies_after'])
+                    )
                 pbar.set_postfix(**postfix)
 
     def train_iter(self, dataloader, max_batches=500):
@@ -218,8 +216,7 @@ class ModelAgnosticMetaLearning(object):
                 mean_outer_loss += (results['mean_outer_loss'] - mean_outer_loss) / count
                 postfix = {'loss': '{0:.4f}'.format(mean_outer_loss)}
                 if 'accuracies_after' in results:
-                    mean_accuracy += (np.mean(results['accuracies_after'])
-                                      - mean_accuracy) / count
+                    mean_accuracy += (np.mean(results['accuracies_after']) - mean_accuracy) / count
                     postfix['accuracy'] = '{0:.4f}'.format(mean_accuracy)
                 pbar.set_postfix(**postfix)
 

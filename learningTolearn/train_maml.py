@@ -13,12 +13,12 @@ import logging
 from torchmeta.utils.data import BatchMetaDataLoader
 
 from learningTolearn.dataloader import get_benchmark_by_name
-from learningTolearn.method.optimization import ModelAgnosticMetaLearning
+from learningTolearn.method.optimization import ModelAgnosticMetaLearning, MetaSGD
 
 
 def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-    device = torch.device('cuda:3' if args.use_cuda and torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     if (args.output_folder is not None):  # args:'output_folder' 参数非空
         # 存放结果的文件夹不存在
@@ -63,13 +63,17 @@ def main(args):
     # 优化器
     meta_optimizer = torch.optim.Adam(benchmark.model.parameters(), lr=args.meta_lr)
     # 模型
-    metalearner = ModelAgnosticMetaLearning(benchmark.model,
-                                            meta_optimizer,
-                                            first_order=args.first_order,
-                                            num_adaptation_steps=args.num_steps,
-                                            step_size=args.step_size,
-                                            loss_function=benchmark.loss_function,
-                                            device=device)
+    # metalearner = ModelAgnosticMetaLearning(benchmark.model,
+    #                                         meta_optimizer,
+    #                                         first_order=args.first_order,
+    #                                         num_adaptation_steps=args.num_steps,
+    #                                         step_size=args.step_size,
+    #                                         loss_function=benchmark.loss_function,
+    #                                         device=device)
+    metalearner = MetaSGD(benchmark.model,
+                          meta_optimizer,
+                          # scheduler=torch.optim.lr_scheduler.StepLR(meta_optimizer, step_size=30),
+                          device=device)
     # Score
     best_value = None
 

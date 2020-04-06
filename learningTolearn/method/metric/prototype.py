@@ -7,6 +7,11 @@ import torch
 import torch.nn.functional as F
 
 
+class PrototypicalNetwork(object):
+    def __init__(self):
+        pass
+
+
 def get_num_samples(targets, num_classes, dtype=None):
     batch_size = targets.size(0)
     with torch.no_grad():

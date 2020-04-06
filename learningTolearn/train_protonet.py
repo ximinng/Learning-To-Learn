@@ -10,39 +10,63 @@ from tqdm import tqdm
 from torchmeta.datasets.helpers import omniglot
 from torchmeta.utils.data import BatchMetaDataLoader
 
+from learningTolearn.dataloader import get_benchmark_by_name
 from learningTolearn.method.metric import get_prototypes, get_accuracy, prototypical_loss
-from learningTolearn.backbone import resnet10
+from learningTolearn.backbone import ModelConv, ModelConvOmniglot
 
 
 def train(args):
-    dataset = omniglot(args.folder, shots=args.num_shots, ways=args.num_ways,
-                       shuffle=True, test_shots=15, meta_train=True, download=args.download)
-    dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
-                                     shuffle=True, num_workers=args.num_workers)
+    device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
-    model = resnet10(in_channels=1, in_size=(28, 28), num_classes=args.num_ways)
-    # model = PrototypicalNetwork(1, args.embedding_size, hidden_size=args.hidden_size)
-    model.to(device=args.device)
+    # dataset = omniglot(args.folder, shots=args.num_shots, ways=args.num_ways,
+    #                    shuffle=True, test_shots=15, meta_train=True, download=args.download)
+    # dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
+    #                                  shuffle=True, num_workers=args.num_workers)
+
+    # 加载数据集
+    benchmark = get_benchmark_by_name(args.dataset,
+                                      args.folder,
+                                      args.num_ways,
+                                      args.num_shots,
+                                      args.num_shots_test,
+                                      args.backbone,
+                                      hidden_size=args.hidden_size)
+    # 训练集
+    meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
+                                                batch_size=args.batch_size,
+                                                shuffle=True,
+                                                num_workers=args.num_workers,
+                                                pin_memory=True)
+    # 验证集
+    meta_val_dataloader = BatchMetaDataLoader(benchmark.meta_val_dataset,
+                                              batch_size=args.batch_size,
+                                              shuffle=True,
+                                              num_workers=args.num_workers,
+                                              pin_memory=True)
+
+    model = ModelConvOmniglot(args.embedding_size, hidden_size=args.hidden_size, flatten=False)
+    model.to(device=device)
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # Training loop
-    with tqdm(dataloader, total=args.num_batches) as pbar:
+    with tqdm(meta_train_dataloader, total=args.num_batches) as pbar:
         for batch_idx, batch in enumerate(pbar):
             model.zero_grad()
 
             train_inputs, train_targets = batch['train']
-            train_inputs = train_inputs.to(device=args.device)  # [16, 25, 1, 28, 28]
+            train_inputs = train_inputs.to(device=device)  # [16, 25, 1, 28, 28]
             print(train_inputs.shape)
-            train_targets = train_targets.to(device=args.device)  # [16, 25]
+            train_targets = train_targets.to(device=device)  # [16, 25]
             train_embeddings = model(train_inputs)
 
             test_inputs, test_targets = batch['test']
-            test_inputs = test_inputs.to(device=args.device)
-            test_targets = test_targets.to(device=args.device)
+            test_inputs = test_inputs.to(device=device)
+            test_targets = test_targets.to(device=device)
             test_embeddings = model(test_inputs)
 
-            prototypes = get_prototypes(train_embeddings, train_targets, dataset.num_classes_per_task)
+            prototypes = get_prototypes(train_embeddings, train_targets,
+                                        benchmark.meta_train_dataset.num_classes_per_task)
             loss = prototypical_loss(prototypes, test_embeddings, test_targets)
 
             loss.backward()
@@ -57,8 +81,8 @@ def train(args):
 
     # Save model
     if args.output_folder is not None:
-        filename = os.path.join(args.output_folder, 'protonet_omniglot_'
-                                                    '{0}shot_{1}way.pt'.format(args.num_shots, args.num_ways))
+        filename = os.path.join(args.output_folder,
+                                'protonet_omniglot_{0}shot_{1}way.pt'.format(args.num_shots, args.num_ways))
         with open(filename, 'wb') as f:
             state_dict = model.state_dict()
             torch.save(state_dict, f)
@@ -71,11 +95,19 @@ if __name__ == '__main__':
 
     parser.add_argument('folder', type=str, default='/few-shot-datasets',
                         help='Path to the folder the data is downloaded to.')
+    parser.add_argument('--dataset', type=str,
+                        choices=['sinusoid', 'omniglot', 'miniimagenet', 'tieredimagenet'], default='omniglot',
+                        help='Name of the dataset (default: omniglot).')
     parser.add_argument('--num-shots', type=int, default=5,
                         help='Number of examples per class (k in "k-shot", default: 5).')
     parser.add_argument('--num-ways', type=int, default=5,
                         help='Number of classes per task (N in "N-way", default: 5).')
+    parser.add_argument('--num-shots-test', type=int, default=15,
+                        help='Number of test example per class. '
+                             'If negative, same as the number of training examples `--num-shots` (default: 15).')
 
+    parser.add_argument('--backbone', type=str, default='resnet10',
+                        help='The backbone of the few-shot training set. (default: resnet10)')
     parser.add_argument('--embedding-size', type=int, default=64,
                         help='Dimension of the embedding/latent space (default: 64).')
     parser.add_argument('--hidden-size', type=int, default=64,
@@ -95,6 +127,5 @@ if __name__ == '__main__':
                         help='Use CUDA if available.')
 
     args = parser.parse_args()
-    args.device = torch.device('cuda:3' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     train(args)

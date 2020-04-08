@@ -10,46 +10,19 @@ from torchmeta.modules import (MetaModule, MetaConv2d, MetaBatchNorm2d,
                                MetaSequential, MetaLinear)
 from torchmeta.modules.utils import get_subdict
 
-"""
-MetaConvModel(
-  (features): MetaSequential(
-    (layer1): MetaSequential(
-      (conv): MetaConv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
-      (relu): ReLU()
-      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-    )
-    (layer2): MetaSequential(
-      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
-      (relu): ReLU()
-      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-    )
-    (layer3): MetaSequential(
-      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
-      (relu): ReLU()
-      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-    )
-    (layer4): MetaSequential(
-      (conv): MetaConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-      (norm): MetaBatchNorm2d(64, eps=1e-05, momentum=1.0, affine=True, track_running_stats=False)
-      (relu): ReLU()
-      (pool): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
-    )
-  )
-  (classifier): MetaLinear(in_features=1600, out_features=5, bias=True)
-)
-"""
 
-
-def conv_block(in_channels, out_channels, **kwargs):
-    return MetaSequential(OrderedDict([
-        ('conv', MetaConv2d(in_channels, out_channels, kernel_size=3, padding=1)),
-        ('norm', MetaBatchNorm2d(out_channels, momentum=1., track_running_stats=False)),
-        ('relu', nn.ReLU()),
-        ('pool', nn.MaxPool2d(2))
+def conv_block(in_channels, out_channels, bias=True, activation=nn.ReLU(), use_dropout=False, p=0.1):
+    res = MetaSequential(OrderedDict([
+        ('conv', MetaConv2d(int(in_channels), int(out_channels), kernel_size=3, padding=1, bias=bias)),
+        ('norm', MetaBatchNorm2d(int(out_channels), momentum=1., track_running_stats=False)),
+        ('relu', activation),
+        ('pool', nn.MaxPool2d(2)),
     ]))
+
+    if use_dropout:
+        res.add_module('dropout', nn.Dropout2d(p))
+
+    return res
 
 
 class MetaConvModel(MetaModule):
@@ -71,7 +44,7 @@ class MetaConvModel(MetaModule):
 
     flatten: bool (default: True)
         Flatten feature map under episodic training.
-        if False: input will accept meta-task. [batch, task, channel, width, height]
+        if False: input will accept meta-task. [batch/task, num of pic, channel, width, height]
 
     References
     ----------
@@ -129,55 +102,45 @@ def ModelConv(out_features, hidden_size=64, flatten=True):
 
 
 class EmbeddingImagenet(nn.Module):
-    def __init__(self,
-                 emb_size):
+    """4-layer Convolutional Neural Network architecture from [1].
+
+    Parameters
+    ----------
+    emb_size : int
+        embedding space after backbone trained.
+
+    References
+    ----------
+    .. [1] [Kim et al. 2019] Kim, J.; Kim, T.; Kim, S.; and Yoo, C. D. (2019).
+        Edge-labeling graph neural network for few-shot learning. In CVPR.
+    """
+
+    def __init__(self, emb_size):
         super(EmbeddingImagenet, self).__init__()
-        # set size
+        self.in_channels = 3
         self.hidden = 64
         self.last_hidden = self.hidden * 25
         self.emb_size = emb_size
 
-        # set layers
-        self.conv_1 = nn.Sequential(nn.Conv2d(in_channels=3,
-                                              out_channels=self.hidden,
-                                              kernel_size=3,
-                                              padding=1,
-                                              bias=False),
-                                    nn.BatchNorm2d(num_features=self.hidden),
-                                    nn.MaxPool2d(kernel_size=2),
-                                    nn.LeakyReLU(negative_slope=0.2, inplace=True))
-        self.conv_2 = nn.Sequential(nn.Conv2d(in_channels=self.hidden,
-                                              out_channels=int(self.hidden * 1.5),
-                                              kernel_size=3,
-                                              bias=False),
-                                    nn.BatchNorm2d(num_features=int(self.hidden * 1.5)),
-                                    nn.MaxPool2d(kernel_size=2),
-                                    nn.LeakyReLU(negative_slope=0.2, inplace=True))
-        self.conv_3 = nn.Sequential(nn.Conv2d(in_channels=int(self.hidden * 1.5),
-                                              out_channels=self.hidden * 2,
-                                              kernel_size=3,
-                                              padding=1,
-                                              bias=False),
-                                    nn.BatchNorm2d(num_features=self.hidden * 2),
-                                    nn.MaxPool2d(kernel_size=2),
-                                    nn.LeakyReLU(negative_slope=0.2, inplace=True),
-                                    nn.Dropout2d(0.4))
-        self.conv_4 = nn.Sequential(nn.Conv2d(in_channels=self.hidden * 2,
-                                              out_channels=self.hidden * 4,
-                                              kernel_size=3,
-                                              padding=1,
-                                              bias=False),
-                                    nn.BatchNorm2d(num_features=self.hidden * 4),
-                                    nn.MaxPool2d(kernel_size=2),
-                                    nn.LeakyReLU(negative_slope=0.2, inplace=True),
-                                    nn.Dropout2d(0.5))
-        self.layer_last = nn.Sequential(nn.Linear(in_features=self.last_hidden * 4,
+        self.layers = nn.Sequential(OrderedDict([
+            ('layer1', conv_block(self.in_channels, self.hidden, bias=False,
+                                  activation=nn.LeakyReLU(0.2))),
+            ('layer2', conv_block(self.hidden, self.hidden * 1.5, bias=False,
+                                  activation=nn.LeakyReLU(0.2))),
+            ('layer3', conv_block(self.hidden * 1.5, self.hidden * 2, bias=False,
+                                  activation=nn.LeakyReLU(0.2),
+                                  use_dropout=True, p=0.4)),
+            ('layer4', conv_block(self.hidden * 2, self.hidden * 4, bias=False,
+                                  activation=nn.LeakyReLU(0.2),
+                                  use_dropout=True, p=0.5))
+        ]))
+        self.last_layer = nn.Sequential(nn.Linear(in_features=self.last_hidden * 4,
                                                   out_features=self.emb_size, bias=True),
                                         nn.BatchNorm1d(self.emb_size))
 
-    def forward(self, input_data):
-        output_data = self.conv_4(self.conv_3(self.conv_2(self.conv_1(input_data))))
-        return self.layer_last(output_data.view(output_data.size(0), -1))
+    def forward(self, x):
+        features = self.layers(x)
+        return self.last_layer(features.view(features.size(0), -1))
 
 
 def _meta_model_without_flatten_test():
@@ -203,6 +166,7 @@ def _model_flatten_test():
 
     input = torch.rand(32, 3, 84, 84)
     model = MetaConvModel(3, 5, hidden_size=64, feature_size=5 * 5 * 64, flatten=True)
+    print(model)
     out = model(input)
     print(out.shape)
 
@@ -211,7 +175,7 @@ def _model_egnn_test():
     import torch
 
     input = torch.rand(32, 3, 84, 84)
-    model = EmbeddingImagenet(128)
+    model = EmbeddingImagenet(555)
     print(model)
     out = model(input)
     print(out.shape)

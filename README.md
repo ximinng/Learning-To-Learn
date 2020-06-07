@@ -12,7 +12,7 @@
     </a>
 </p>
 
-Meta-Learning
+The collection code of Meta-Learning
 
 <p align="center">
     <a href="#clipboard-getting-started">快速开始 - Getting Started</a> •

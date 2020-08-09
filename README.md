@@ -12,7 +12,7 @@
     </a>
 </p>
 
-The collection code of Meta-Learning.
+A collection of machine learning algorithm for few-shot learning & meta-learning in PyTorch.
 
 <p align="center">
     <a href="#clipboard-getting-started">快速开始 - Getting Started</a> •
@@ -26,12 +26,14 @@ The collection code of Meta-Learning.
 <a href="https://ximingxing.github.io/">https://ximingxing.github.io/</a>
 </h6>
 
-<h2 align="center">:clipboard: 快速开始 -  Getting Started</h2>
+<h2 align="center">内容 - Table of Contents</h2>
+
+* MAML
+
+* Prototypical Network
 
 <h2 align="center">关于 - About</h2>
-
 <h2 align="center">鸣谢 - Acknowledgment</h2>
 <p align="right"><a href="#ltl"><sup>▴ Back to top</sup></a></p>
-
 <h2 align="center">:speech_balloon: FAQ</h2>
 <p align="right"><a href="#ltl"><sup>▴ Back to top</sup></a></p>

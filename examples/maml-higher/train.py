@@ -1,27 +1,78 @@
 import os
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
 import logging
 
+from collections import OrderedDict
+
+import higher  # tested with higher v0.2
+
 from torchmeta.datasets.helpers import omniglot
 from torchmeta.utils.data import BatchMetaDataLoader
-from torchmeta.utils.gradient_based import gradient_update_parameters
-
-from model import ConvolutionalNeuralNetwork
-from utils import get_accuracy
 
 logger = logging.getLogger(__name__)
 
 
+def conv3x3(in_channels, out_channels, **kwargs):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, **kwargs),
+        nn.BatchNorm2d(out_channels, momentum=1., track_running_stats=False),
+        nn.ReLU(),
+        nn.MaxPool2d(2)
+    )
+
+class ConvolutionalNeuralNetwork(nn.Module):
+    def __init__(self, in_channels, out_features, hidden_size=64):
+        super(ConvolutionalNeuralNetwork, self).__init__()
+        self.in_channels = in_channels
+        self.out_features = out_features
+        self.hidden_size = hidden_size
+
+        self.features = nn.Sequential(
+            conv3x3(in_channels, hidden_size),
+            conv3x3(hidden_size, hidden_size),
+            conv3x3(hidden_size, hidden_size),
+            conv3x3(hidden_size, hidden_size)
+        )
+
+        self.classifier = nn.Linear(hidden_size, out_features)
+
+    def forward(self, inputs, params=None):
+        features = self.features(inputs)
+        features = features.view((features.size(0), -1))
+        logits = self.classifier(features)
+        return logits
+
+
+def get_accuracy(logits, targets):
+    """Compute the accuracy (after adaptation) of MAML on the test/query points
+
+    Parameters
+    ----------
+    logits : `torch.FloatTensor` instance
+        Outputs/logits of the model on the query points. This tensor has shape
+        `(num_examples, num_classes)`.
+
+    targets : `torch.LongTensor` instance
+        A tensor containing the targets of the query points. This tensor has 
+        shape `(num_examples,)`.
+
+    Returns
+    -------
+    accuracy : `torch.FloatTensor` instance
+        Mean accuracy on the query points
+    """
+    _, predictions = torch.max(logits, dim=-1)
+    return torch.mean(predictions.eq(targets).float())
+
+
 def train(args):
-    logger.warning('This script is an example to showcase the MetaModule and '
-                   'data-loading features of Torchmeta, and as such has been '
-                   'very lightly tested. For a better tested implementation of '
-                   'Model-Agnostic Meta-Learning (MAML) using Torchmeta with '
-                   'more features (including multi-step adaptation and '
-                   'different datasets), please check `https://github.com/'
-                   'tristandeleu/pytorch-maml`.')
+    logger.warning('This script is an example to showcase the data-loading '
+                   'features of Torchmeta in conjunction with using higher to '
+                   'make models "unrollable" and optimizers differentiable, '
+                   'and as such has been  very lightly tested.')
 
     dataset = omniglot(args.folder,
                        shots=args.num_shots,
@@ -40,6 +91,7 @@ def train(args):
                                        hidden_size=args.hidden_size)
     model.to(device=args.device)
     model.train()
+    inner_optimiser = torch.optim.SGD(model.parameters(), lr=args.step_size)
     meta_optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     # Training loop
@@ -57,23 +109,21 @@ def train(args):
 
             outer_loss = torch.tensor(0., device=args.device)
             accuracy = torch.tensor(0., device=args.device)
+
             for task_idx, (train_input, train_target, test_input,
                     test_target) in enumerate(zip(train_inputs, train_targets,
                     test_inputs, test_targets)):
-                train_logit = model(train_input)
-                inner_loss = F.cross_entropy(train_logit, train_target)
+                with higher.innerloop_ctx(model, inner_optimiser, copy_initial_weights=False) as (fmodel, diffopt):
+                    train_logit = fmodel(train_input)
+                    inner_loss = F.cross_entropy(train_logit, train_target)
 
-                model.zero_grad()
-                params = gradient_update_parameters(model,
-                                                    inner_loss,
-                                                    step_size=args.step_size,
-                                                    first_order=args.first_order)
+                    diffopt.step(inner_loss)
 
-                test_logit = model(test_input, params=params)
-                outer_loss += F.cross_entropy(test_logit, test_target)
+                    test_logit = fmodel(test_input)
+                    outer_loss += F.cross_entropy(test_logit, test_target)
 
-                with torch.no_grad():
-                    accuracy += get_accuracy(test_logit, test_target)
+                    with torch.no_grad():
+                        accuracy += get_accuracy(test_logit, test_target)
 
             outer_loss.div_(args.batch_size)
             accuracy.div_(args.batch_size)
@@ -105,8 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--num-ways', type=int, default=5,
         help='Number of classes per task (N in "N-way", default: 5).')
 
-    parser.add_argument('--first-order', action='store_true',
-        help='Use the first-order approximation of MAML.')
+    
     parser.add_argument('--step-size', type=float, default=0.4,
         help='Step-size for the gradient step for adaptation (default: 0.4).')
     parser.add_argument('--hidden-size', type=int, default=64,

@@ -8,10 +8,11 @@ import torch.nn as nn
 from collections import OrderedDict
 from torchmeta.modules import (MetaModule, MetaConv2d, MetaBatchNorm2d,
                                MetaSequential, MetaLinear)
-from torchmeta.modules.utils import get_subdict
 
 
-def conv_block(in_channels, out_channels, bias=True, activation=nn.ReLU(), use_dropout=False, p=0.1):
+def conv_block(in_channels, out_channels, bias=True,
+               activation=nn.ReLU(inplace=True),
+               use_dropout=False, p=0.1):
     res = MetaSequential(OrderedDict([
         ('conv', MetaConv2d(int(in_channels), int(out_channels), kernel_size=3, padding=1, bias=bias)),
         ('norm', MetaBatchNorm2d(int(out_channels), momentum=1., track_running_stats=False)),
@@ -42,9 +43,10 @@ class MetaConvModel(MetaModule):
     feature_size : int (default: 64)
         Number of features returned by the convolutional head.
 
-    flatten: bool (default: True)
+    embedding: bool (default: True)
         Flatten feature map under episodic training.
         if False: input will accept meta-task. [batch/task, num of pic, channel, width, height]
+        for prototype network.
 
     References
     ----------
@@ -53,13 +55,13 @@ class MetaConvModel(MetaModule):
            Machine Learning (ICML) (https://arxiv.org/abs/1703.03400)
     """
 
-    def __init__(self, in_channels, out_features, hidden_size=64, feature_size=64, flatten=True):
+    def __init__(self, in_channels, out_features, hidden_size=64, feature_size=64, embedding=True):
         super(MetaConvModel, self).__init__()
         self.in_channels = in_channels
         self.out_features = out_features
         self.hidden_size = hidden_size
         self.feature_size = feature_size
-        self.flatten = flatten
+        self.embedding = embedding
 
         self.features = MetaSequential(OrderedDict([
             ('layer1', conv_block(in_channels, hidden_size)),
@@ -71,34 +73,33 @@ class MetaConvModel(MetaModule):
         self.classifier = MetaLinear(feature_size, out_features)
 
     def forward(self, inputs, params=None):
-        if self.flatten:
-            # [batch_size, 3, 84, 84]
-            features = self.features(inputs, params=get_subdict(params, 'features'))
-            # [batch_size, hidden_size, 5, 5]
-            features = features.view(features.size(0), -1)
-            logits = self.classifier(features, params=get_subdict(params, 'classifier'))
-            return logits
-        else:
-            # [batch, task, channel, width, height]
-            # inputs: [16, 25, 3, 84, 84]
+        if self.embedding:
+            # inputs shape: [batch, task, channel, width, height]
+            # like: [16, 25, 3, 84, 84]
 
             # Train before embedding [400, 3, 84, 84]
             embeddings = self.features(inputs.view(-1, *inputs.shape[2:]))
             # Train after embedding: [400, 64, 5, 5]
 
             return embeddings.view(*inputs.shape[:2], -1)  # [16, 25, 64x5x5]
+        else:  # MAML
+            # inputs shape: [batch_size, channel, width, height]
+            features = self.features(inputs, params=self.get_subdict(params, 'features'))
+            features = features.view(features.size(0), -1)
+            logits = self.classifier(features, params=self.get_subdict(params, 'classifier'))
+            return logits
 
 
 def ModelConvOmniglot(out_features, hidden_size=64, flatten=True):
     return MetaConvModel(1, out_features,
                          hidden_size=hidden_size, feature_size=hidden_size,
-                         flatten=flatten)
+                         embedding=flatten)
 
 
 def ModelConv(out_features, hidden_size=64, flatten=True):
     return MetaConvModel(3, out_features,
                          hidden_size=hidden_size, feature_size=5 * 5 * hidden_size,
-                         flatten=flatten)
+                         embedding=flatten)
 
 
 class EmbeddingImagenet(nn.Module):
@@ -143,7 +144,7 @@ class EmbeddingImagenet(nn.Module):
         return self.last_layer(features.view(features.size(0), -1))
 
 
-def _meta_model_without_flatten_test():
+def _meta_model_embedding_test():
     """
     1. input: episodic training
     2. feature: get meta-task feature_map without flatten
@@ -151,12 +152,12 @@ def _meta_model_without_flatten_test():
     import torch
 
     input = torch.rand(16, 25, 3, 84, 84)
-    model = MetaConvModel(3, 5, hidden_size=64, feature_size=5 * 5 * 64, flatten=False)
+    model = MetaConvModel(3, 5, hidden_size=64, feature_size=5 * 5 * 64, embedding=False)
     out = model(input)
     print(out.shape)
 
 
-def _model_flatten_test():
+def _meta_model_test():
     """
     1. input: [b, c, h, w]
     2. get weight and bias like `maml`
@@ -165,8 +166,7 @@ def _model_flatten_test():
     import torch
 
     input = torch.rand(32, 3, 84, 84)
-    model = MetaConvModel(3, 5, hidden_size=64, feature_size=5 * 5 * 64, flatten=True)
-    print(model)
+    model = MetaConvModel(3, 5, hidden_size=64, feature_size=5 * 5 * 64, embedding=True)
     out = model(input)
     print(out.shape)
 
@@ -182,6 +182,6 @@ def _model_egnn_test():
 
 
 if __name__ == '__main__':
-    # _model_flatten_test()
-    # _meta_model_without_flatten_test()
-    _model_egnn_test()
+    _meta_model_test()
+    _meta_model_embedding_test()
+    # _model_egnn_test()

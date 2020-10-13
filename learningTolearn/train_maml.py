@@ -20,7 +20,7 @@ def main(args):
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
     device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
-    if (args.output_folder is not None):  # args:'output_folder' 参数非空
+    if (args.output_folder is not None):
         # 存放结果的文件夹不存在
         if not os.path.exists(args.output_folder):
             os.makedirs(args.output_folder)
@@ -46,7 +46,6 @@ def main(args):
                                       args.num_ways,
                                       args.num_shots,
                                       args.num_shots_test,
-                                      args.backbone,
                                       hidden_size=args.hidden_size)
     # 训练集
     meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
@@ -63,17 +62,18 @@ def main(args):
     # 优化器
     meta_optimizer = torch.optim.Adam(benchmark.model.parameters(), lr=args.meta_lr)
     # 模型
-    # metalearner = ModelAgnosticMetaLearning(benchmark.model,
-    #                                         meta_optimizer,
-    #                                         first_order=args.first_order,
-    #                                         num_adaptation_steps=args.num_steps,
-    #                                         step_size=args.step_size,
-    #                                         loss_function=benchmark.loss_function,
-    #                                         device=device)
-    metalearner = MetaSGD(benchmark.model,
-                          meta_optimizer,
-                          # scheduler=torch.optim.lr_scheduler.StepLR(meta_optimizer, step_size=30),
-                          device=device)
+    metalearner = ModelAgnosticMetaLearning(benchmark.model,
+                                            meta_optimizer,
+                                            first_order=args.first_order,
+                                            num_adaptation_steps=args.num_steps,
+                                            step_size=args.step_size,
+                                            loss_function=benchmark.loss_function,
+                                            device=device)
+    # metalearner = MetaSGD(benchmark.model,
+    #                       meta_optimizer,
+    #                       # scheduler=torch.optim.lr_scheduler.StepLR(meta_optimizer, step_size=30),
+    #                       device=device)
+
     # Score
     best_value = None
 
@@ -91,9 +91,10 @@ def main(args):
                                        desc=epoch_desc.format(epoch + 1))
 
         # Save best model
-        if (best_value is None) or (('accuracies_after' in results) and (best_value < results['accuracies_after'])):
-            best_value = results['accuracies_after']
-            save_model = True
+        if 'accuracies_after' in results:
+            if (best_value is None) or (best_value < results['accuracies_after']):
+                best_value = results['accuracies_after']
+                save_model = True
         elif (best_value is None) or (best_value > results['mean_outer_loss']):
             best_value = results['mean_outer_loss']
             save_model = True
@@ -104,9 +105,9 @@ def main(args):
             with open(args.model_path, 'wb') as f:
                 torch.save(benchmark.model.state_dict(), f)
 
-    # if hasattr(meta_train_dataset, 'close'):
-    #     meta_train_dataset.close()
-    #     meta_val_dataset.close()
+    if hasattr(benchmark.meta_train_dataset, 'close'):
+        benchmark.meta_train_dataset.close()
+        benchmark.meta_val_dataset.close()
 
 
 if __name__ == '__main__':
@@ -115,12 +116,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('MAML')
 
     # General
-    parser.add_argument('folder', type=str, default='/few-shot-datasets',
+    parser.add_argument('folder', type=str, default='/Documents/Github/few-shot-datasets',
                         help='Path to the folder the data is downloaded to.')
     parser.add_argument('--dataset', type=str,
                         choices=['sinusoid', 'omniglot', 'miniimagenet', 'tieredimagenet'], default='omniglot',
                         help='Name of the dataset (default: omniglot).')
-    parser.add_argument('--output-folder', type=str, default='/result',
+    parser.add_argument('--output_folder', type=str,
+                        default='/root/workshop/Learning-To-Learn/learningTolearn/result',
                         help='Path to the output folder to save the model.')
     parser.add_argument('--num-ways', type=int, default=5,
                         help='Number of classes per task (N in "N-way", default: 5).')
@@ -134,8 +136,6 @@ if __name__ == '__main__':
     parser.add_argument('--hidden-size', type=int, default=64,
                         help='Number of channels in each convolution layer of the VGG network '
                              '(default: 64).')
-    parser.add_argument('--backbone', type=str, default='resnet10',
-                        help='The backbone of the few-shot training set. (default: resnet10)')
 
     # Optimization
     parser.add_argument('--batch-size', type=int, default=25,

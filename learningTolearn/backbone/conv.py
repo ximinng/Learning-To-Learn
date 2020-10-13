@@ -102,6 +102,11 @@ def ModelConv(out_features, hidden_size=64, flatten=True):
                          embedding=flatten)
 
 
+def ModelConvMiniImagenet(out_features, hidden_size=64):
+    return MetaConvModel(3, out_features, hidden_size=hidden_size,
+                         feature_size=5 * 5 * hidden_size)
+
+
 class EmbeddingImagenet(nn.Module):
     """4-layer Convolutional Neural Network architecture from [1].
 

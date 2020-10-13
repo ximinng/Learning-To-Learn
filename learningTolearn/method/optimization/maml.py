@@ -9,7 +9,10 @@ import numpy as np
 from tqdm import tqdm
 
 from collections import OrderedDict
-from learningTolearn.util import update_parameters, tensors_to_device, compute_accuracy
+from torchmeta.utils import gradient_update_parameters
+from learningTolearn.util import tensors_to_device, compute_accuracy
+
+__all__ = ['ModelAgnosticMetaLearning', 'MAML', 'FOMAML']
 
 
 class ModelAgnosticMetaLearning(object):
@@ -82,23 +85,22 @@ class ModelAgnosticMetaLearning(object):
         self.device = device
 
         if per_param_step_size:
-            self.step_size = OrderedDict(
-                (name, torch.tensor(step_size, dtype=param.dtype, device=self.device,
-                                    requires_grad=learn_step_size))
-                for (name, param) in model.meta_named_parameters())
+            self.step_size = OrderedDict((name, torch.tensor(step_size,
+                                                             dtype=param.dtype, device=self.device,
+                                                             requires_grad=learn_step_size)) for (name, param)
+                                         in model.meta_named_parameters())
         else:
-            self.step_size = torch.tensor(step_size,
-                                          dtype=torch.float32,
+            self.step_size = torch.tensor(step_size, dtype=torch.float32,
                                           device=self.device, requires_grad=learn_step_size)
 
         if (self.optimizer is not None) and learn_step_size:
-            self.optimizer.add_param_group({
-                'params': self.step_size.values() if per_param_step_size else [self.step_size]
-            })
+            self.optimizer.add_param_group({'params': self.step_size.values()
+            if per_param_step_size else [self.step_size]})
             if scheduler is not None:
                 for group in self.optimizer.param_groups:
                     group.setdefault('initial_lr', group['lr'])
-                self.scheduler.base_lrs([group['initial_lr'] for group in self.optimizer.param_groups])
+                self.scheduler.base_lrs([group['initial_lr']
+                                         for group in self.optimizer.param_groups])
 
     def get_outer_loss(self, batch):
         if 'test' not in batch:
@@ -109,7 +111,8 @@ class ModelAgnosticMetaLearning(object):
         is_classification_task = (not test_targets.dtype.is_floating_point)
         results = {
             'num_tasks': num_tasks,
-            'inner_losses': np.zeros((self.num_adaptation_steps, num_tasks), dtype=np.float32),
+            'inner_losses': np.zeros((self.num_adaptation_steps,
+                                      num_tasks), dtype=np.float32),
             'outer_losses': np.zeros((num_tasks,), dtype=np.float32),
             'mean_outer_loss': 0.
         }
@@ -138,7 +141,8 @@ class ModelAgnosticMetaLearning(object):
                 mean_outer_loss += outer_loss
 
             if is_classification_task:
-                results['accuracies_after'][task_id] = compute_accuracy(test_logits, test_targets)
+                results['accuracies_after'][task_id] = compute_accuracy(
+                    test_logits, test_targets)
 
         mean_outer_loss.div_(num_tasks)
         results['mean_outer_loss'] = mean_outer_loss.item()
@@ -151,7 +155,8 @@ class ModelAgnosticMetaLearning(object):
             is_classification_task = (not targets.dtype.is_floating_point)
         params = None
 
-        results = {'inner_losses': np.zeros(num_adaptation_steps, dtype=np.float32)}
+        results = {'inner_losses': np.zeros(
+            (num_adaptation_steps,), dtype=np.float32)}
 
         for step in range(num_adaptation_steps):
             logits = self.model(inputs, params=params)
@@ -162,21 +167,20 @@ class ModelAgnosticMetaLearning(object):
                 results['accuracy_before'] = compute_accuracy(logits, targets)
 
             self.model.zero_grad()
-            params = update_parameters(self.model, inner_loss,
-                                       step_size=step_size, params=params,
-                                       first_order=(not self.model.training) or first_order)
+            params = gradient_update_parameters(self.model, inner_loss,
+                                                step_size=step_size, params=params,
+                                                first_order=(not self.model.training) or first_order)
 
         return params, results
 
-    def train(self, dataloader, max_batches=200, verbose=True, **kwargs):
+    def train(self, dataloader, max_batches=500, verbose=True, **kwargs):
         with tqdm(total=max_batches, disable=not verbose, **kwargs) as pbar:
             for results in self.train_iter(dataloader, max_batches=max_batches):
                 pbar.update(1)
                 postfix = {'loss': '{0:.4f}'.format(results['mean_outer_loss'])}
                 if 'accuracies_after' in results:
                     postfix['accuracy'] = '{0:.4f}'.format(
-                        np.mean(results['accuracies_after'])
-                    )
+                        np.mean(results['accuracies_after']))
                 pbar.set_postfix(**postfix)
 
     def train_iter(self, dataloader, max_batches=500):
@@ -213,10 +217,12 @@ class ModelAgnosticMetaLearning(object):
             for results in self.evaluate_iter(dataloader, max_batches=max_batches):
                 pbar.update(1)
                 count += 1
-                mean_outer_loss += (results['mean_outer_loss'] - mean_outer_loss) / count
+                mean_outer_loss += (results['mean_outer_loss']
+                                    - mean_outer_loss) / count
                 postfix = {'loss': '{0:.4f}'.format(mean_outer_loss)}
                 if 'accuracies_after' in results:
-                    mean_accuracy += (np.mean(results['accuracies_after']) - mean_accuracy) / count
+                    mean_accuracy += (np.mean(results['accuracies_after'])
+                                      - mean_accuracy) / count
                     postfix['accuracy'] = '{0:.4f}'.format(mean_accuracy)
                 pbar.set_postfix(**postfix)
 
@@ -239,6 +245,9 @@ class ModelAgnosticMetaLearning(object):
                 yield results
 
                 num_batches += 1
+
+
+MAML = ModelAgnosticMetaLearning
 
 
 class FOMAML(ModelAgnosticMetaLearning):

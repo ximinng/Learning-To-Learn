@@ -10,7 +10,7 @@ from tqdm import tqdm
 from torchmeta.datasets.helpers import omniglot
 from torchmeta.utils.data import BatchMetaDataLoader
 
-from learningTolearn.dataloader import get_benchmark_by_name
+from learningTolearn.dataset import get_benchmark_by_name
 from learningTolearn.method.metric import get_prototypes, get_accuracy, prototypical_loss
 from learningTolearn.backbone import ModelConv, ModelConvOmniglot
 
@@ -20,7 +20,7 @@ def train(args):
 
     # dataset = omniglot(args.folder, shots=args.num_shots, ways=args.num_ways,
     #                    shuffle=True, test_shots=15, meta_train=True, download=args.download)
-    # dataloader = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
+    # dataset = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
     #                                  shuffle=True, num_workers=args.num_workers)
 
     # 加载数据集

@@ -12,7 +12,7 @@ import json
 import logging
 from torchmeta.utils.data import BatchMetaDataLoader
 
-from learningTolearn.dataloader import get_benchmark_by_name
+from learningTolearn.dataset import get_benchmark_by_name
 from learningTolearn.method.optimization import ModelAgnosticMetaLearning, MetaSGD
 
 

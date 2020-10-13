@@ -15,10 +15,10 @@
 A collection of machine learning algorithm for few-shot learning & meta-learning in PyTorch.
 
 <p align="center">
-    <a href="#clipboard-getting-started">快速开始 - Getting Started</a> •
-    <a href="#table-of-contents">内容 - Table of Contents</a> •
-    <a href="#about">关于 - About</a> •
-    <a href="#acknowledgment">鸣谢 - Acknowledgment</a> •
+    <a href="#clipboard-getting-started">Getting Started</a> •
+    <a href="#table-of-contents">Table of Contents</a> •
+    <a href="#about">About</a> •
+    <a href="#acknowledgment">Acknowledgment</a> •
     <a href="#speech_balloon-faq">FAQ</a> •
 </p>
 
@@ -26,14 +26,22 @@ A collection of machine learning algorithm for few-shot learning & meta-learning
 <a href="https://ximingxing.github.io/">https://ximingxing.github.io/</a>
 </h6>
 
-<h2 align="center">内容 - Table of Contents</h2>
+<h2 align="center">Table of Contents</h2>
 
-* MAML
+The following algorithms are currently supported: 
 
-* Prototypical Network
+- MAML
+- MetaSGD
+- Prototypical Network
+- EGNN
 
-<h2 align="center">关于 - About</h2>
-<h2 align="center">鸣谢 - Acknowledgment</h2>
+<h2 align="center">About</h2>
+<h2 align="center">Acknowledgment</h2>
+
+Thank the following authors or organizations for their help and open source code: 
+
+- [tristandeleu`s pytorch-meta](https://github.com/tristandeleu/pytorch-meta)
+
 <p align="right"><a href="#ltl"><sup>▴ Back to top</sup></a></p>
 <h2 align="center">:speech_balloon: FAQ</h2>
 <p align="right"><a href="#ltl"><sup>▴ Back to top</sup></a></p>

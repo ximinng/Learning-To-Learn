@@ -7,7 +7,6 @@ import torch.nn as nn
 
 from collections import OrderedDict
 from torchmeta.modules import MetaModule, MetaSequential, MetaLinear
-from torchmeta.modules.utils import get_subdict
 
 
 class MetaMLPModel(MetaModule):
@@ -48,8 +47,8 @@ class MetaMLPModel(MetaModule):
         self.classifier = MetaLinear(hidden_sizes[-1], out_features, bias=True)
 
     def forward(self, inputs, params=None):
-        features = self.features(inputs, params=get_subdict(params, 'features'))
-        logits = self.classifier(features, params=get_subdict(params, 'classifier'))
+        features = self.features(inputs, params=self.get_subdict(params, 'features'))
+        logits = self.classifier(features, params=self.get_subdict(params, 'classifier'))
         return logits
 
 

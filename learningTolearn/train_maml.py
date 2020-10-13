@@ -116,7 +116,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('MAML')
 
     # General
-    parser.add_argument('folder', type=str, default='/Documents/Github/few-shot-datasets',
+    parser.add_argument('--folder', type=str, default='/Documents/Github/few-shot-datasets/',
                         help='Path to the folder the data is downloaded to.')
     parser.add_argument('--dataset', type=str,
                         choices=['sinusoid', 'omniglot', 'miniimagenet', 'tieredimagenet'], default='omniglot',

@@ -44,7 +44,7 @@ def train(args):
                                               num_workers=args.num_workers,
                                               pin_memory=True)
 
-    model = ModelConvOmniglot(args.embedding_size, hidden_size=args.hidden_size, flatten=False)
+    model = ModelConvOmniglot(args.embedding_size, hidden_size=args.hidden_size, embedding=False)
     model.to(device=device)
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)

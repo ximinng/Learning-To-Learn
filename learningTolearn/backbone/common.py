@@ -17,7 +17,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchmeta.modules import MetaModule, MetaSequential, MetaConv2d, MetaBatchNorm2d
-from torchmeta.modules.utils import get_subdict
 
 
 def round_channels(channels,
@@ -344,9 +343,9 @@ class MetaConvBlock(MetaModule):
             self.activ = get_activation_layer(activation)
 
     def forward(self, x, params=None):
-        x = self.conv(x, params=get_subdict(params, 'conv'))
+        x = self.conv(x, params=self.get_subdict(params, 'conv'))
         if self.use_bn:
-            x = self.bn(x, params=get_subdict(params, 'bn'))
+            x = self.bn(x, params=self.get_subdict(params, 'bn'))
         if self.activate:
             x = self.activ(x)
         return x

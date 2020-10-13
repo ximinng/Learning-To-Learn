@@ -55,7 +55,7 @@ class MetaConvModel(MetaModule):
            Machine Learning (ICML) (https://arxiv.org/abs/1703.03400)
     """
 
-    def __init__(self, in_channels, out_features, hidden_size=64, feature_size=64, embedding=True):
+    def __init__(self, in_channels, out_features, hidden_size=64, feature_size=64, embedding=False):
         super(MetaConvModel, self).__init__()
         self.in_channels = in_channels
         self.out_features = out_features
@@ -90,13 +90,13 @@ class MetaConvModel(MetaModule):
             return logits
 
 
-def ModelConvOmniglot(out_features, hidden_size=64, flatten=True):
+def ModelConvOmniglot(out_features, hidden_size=64, embedding=False):
     return MetaConvModel(1, out_features,
                          hidden_size=hidden_size, feature_size=hidden_size,
-                         embedding=flatten)
+                         embedding=embedding)
 
 
-def ModelConv(out_features, hidden_size=64, flatten=True):
+def ModelConv(out_features, hidden_size=64, flatten=False):
     return MetaConvModel(3, out_features,
                          hidden_size=hidden_size, feature_size=5 * 5 * hidden_size,
                          embedding=flatten)

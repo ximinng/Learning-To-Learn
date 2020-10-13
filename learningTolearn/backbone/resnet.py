@@ -15,7 +15,6 @@ import os
 import torch.nn as nn
 import torch.nn.init as init
 from torchmeta.modules import (MetaModule, MetaSequential, MetaLinear)
-from torchmeta.modules.utils import get_subdict
 
 from learningTolearn.backbone.common import (conv1x1_block, conv3x3_block, conv7x7_block)
 
@@ -54,8 +53,8 @@ class ResBlock(MetaModule):
 
     def forward(self, x, params=None):
         if self.mode == 'maml':
-            x = self.conv1(x, params=get_subdict(params, 'conv1'))
-            x = self.conv2(x, params=get_subdict(params, 'conv2'))
+            x = self.conv1(x, params=self.get_subdict(params, 'conv1'))
+            x = self.conv2(x, params=self.get_subdict(params, 'conv2'))
         else:
             x = self.conv1(x)
             x = self.conv2(x)
@@ -116,9 +115,9 @@ class ResBottleneck(MetaModule):
 
     def forward(self, x, params=None):
         if self.mode == 'maml':
-            x = self.conv1(x, params=get_subdict(params, 'conv1'))
-            x = self.conv2(x, params=get_subdict(params, 'conv2'))
-            x = self.conv3(x, params=get_subdict(params, 'conv3'))
+            x = self.conv1(x, params=self.get_subdict(params, 'conv1'))
+            x = self.conv2(x, params=self.get_subdict(params, 'conv2'))
+            x = self.conv3(x, params=self.get_subdict(params, 'conv3'))
         else:
             x = self.conv1(x)
             x = self.conv2(x)
@@ -188,14 +187,14 @@ class ResUnit(MetaModule):
     def forward(self, x, params=None):
         if self.resize_identity:
             if self.mode == 'maml':
-                identity = self.identity_conv(x, params=get_subdict(params, 'identity_conv'))
+                identity = self.identity_conv(x, params=self.get_subdict(params, 'identity_conv'))
             else:
                 identity = self.identity_conv(x)
         else:
             identity = x
 
         if self.mode == 'maml':
-            x = self.body(x, params=get_subdict(params, 'body'))
+            x = self.body(x, params=self.get_subdict(params, 'body'))
         else:
             x = self.body(x)
         x = x + identity
@@ -229,7 +228,7 @@ class ResInitBlock(MetaModule):
 
     def forward(self, x, params=None):
         if self.mode == 'maml':
-            x = self.conv(x, params=get_subdict(params, 'conv'))
+            x = self.conv(x, params=self.get_subdict(params, 'conv'))
             x = self.pool(x)
         else:
             x = self.conv(x)
@@ -314,10 +313,10 @@ class ResNet(MetaModule):
 
     def forward(self, x, params=None):
         if self.mode == 'maml':
-            x = self.features(x, params=get_subdict(params, 'features'))
+            x = self.features(x, params=self.get_subdict(params, 'features'))
             x = x.view(x.size(0), -1)
             if self.linear:
-                x = self.output(x, params=get_subdict(params, 'output'))
+                x = self.output(x, params=self.get_subdict(params, 'output'))
         else:
             x = self.features(x)
             x = x.view(x.size(0), -1)

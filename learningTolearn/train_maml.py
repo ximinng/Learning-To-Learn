@@ -138,7 +138,7 @@ if __name__ == '__main__':
                              '(default: 64).')
 
     # Optimization
-    parser.add_argument('--batch-size', type=int, default=25,
+    parser.add_argument('--batch-size', type=int, default=32,
                         help='Number of tasks in a batch of tasks (default: 25).')
     parser.add_argument('--num-steps', type=int, default=1,
                         help='Number of fast adaptation steps, ie. gradient descent '

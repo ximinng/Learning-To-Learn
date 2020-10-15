@@ -122,9 +122,14 @@ class ModelAgnosticMetaLearning(object):
                 'accuracies_after': np.zeros((num_tasks,), dtype=np.float32)
             })
 
+        # x, y = batch['train']
+        # [batch_size, task, channel, width, height]
+        # torch.Size([32, 25, 1, 28, 28]) torch.Size([32, 25])
         mean_outer_loss = torch.tensor(0., device=self.device)
         for task_id, (train_inputs, train_targets, test_inputs, test_targets) \
                 in enumerate(zip(*batch['train'], *batch['test'])):
+            # train_inputs  : torch.Size([25, 1, 28, 28])
+            # train_targets : torch.Size([25])
             params, adaptation_results = self.adapt(train_inputs, train_targets,
                                                     is_classification_task=is_classification_task,
                                                     num_adaptation_steps=self.num_adaptation_steps,
@@ -155,8 +160,7 @@ class ModelAgnosticMetaLearning(object):
             is_classification_task = (not targets.dtype.is_floating_point)
         params = None
 
-        results = {'inner_losses': np.zeros(
-            (num_adaptation_steps,), dtype=np.float32)}
+        results = {'inner_losses': np.zeros((num_adaptation_steps,), dtype=np.float32)}
 
         for step in range(num_adaptation_steps):
             logits = self.model(inputs, params=params)
@@ -193,7 +197,7 @@ class ModelAgnosticMetaLearning(object):
         num_batches = 0
         self.model.train()
         while num_batches < max_batches:
-            for batch in dataloader:
+            for batch in dataloader:  # len(batch):2 -- batch['train'], batch['test']
                 if num_batches >= max_batches:
                     break
 

@@ -807,5 +807,5 @@ def meta_learning_set_test():
 
 
 if __name__ == "__main__":
-    # normal_dataset_test()
-    meta_learning_set_test()
+    normal_dataset_test()
+    # meta_learning_set_test()

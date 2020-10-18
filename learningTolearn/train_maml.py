@@ -13,7 +13,7 @@ import logging
 from torchmeta.utils.data import BatchMetaDataLoader
 
 from learningTolearn.dataset import get_benchmark_by_name
-from learningTolearn.method.optimization import ModelAgnosticMetaLearning, MetaSGD
+from learningTolearn.method.optimization import ModelAgnosticMetaLearning
 
 
 def main(args):
@@ -21,12 +21,10 @@ def main(args):
     device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
 
     if (args.output_folder is not None):
-        # 存放结果的文件夹不存在
         if not os.path.exists(args.output_folder):
             os.makedirs(args.output_folder)
             logging.debug('Creating folder `{0}`'.format(args.output_folder))
 
-        # 存放结果的文件夹存在
         folder = os.path.join(args.output_folder, time.strftime('%Y-%m-%d_%H%M%S'))
         os.makedirs(folder)
         logging.debug('Creating folder `{0}`'.format(folder))
@@ -40,28 +38,30 @@ def main(args):
         logging.info('Saving configuration file in `{0}`'
                      .format(os.path.abspath(os.path.join(folder, 'config.json'))))
 
-    # 加载数据集
+    # Load dataset, model and loss function
     benchmark = get_benchmark_by_name(args.dataset,
                                       args.folder,
                                       args.num_ways,
                                       args.num_shots,
                                       args.num_shots_test,
                                       hidden_size=args.hidden_size)
-    # 训练集
+
+    # Training set
     meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
                                                 batch_size=args.batch_size,
                                                 shuffle=True,
                                                 num_workers=args.num_workers,
                                                 pin_memory=True)
-    # 验证集
+    # Validation set
     meta_val_dataloader = BatchMetaDataLoader(benchmark.meta_val_dataset,
                                               batch_size=args.batch_size,
                                               shuffle=True,
                                               num_workers=args.num_workers,
                                               pin_memory=True)
-    # 优化器
+    # Set optimizer
     meta_optimizer = torch.optim.Adam(benchmark.model.parameters(), lr=args.meta_lr)
-    # 模型
+
+    # Set model
     metalearner = ModelAgnosticMetaLearning(benchmark.model,
                                             meta_optimizer,
                                             first_order=args.first_order,
@@ -69,10 +69,6 @@ def main(args):
                                             step_size=args.step_size,
                                             loss_function=benchmark.loss_function,
                                             device=device)
-    # metalearner = MetaSGD(benchmark.model,
-    #                       meta_optimizer,
-    #                       # scheduler=torch.optim.lr_scheduler.StepLR(meta_optimizer, step_size=30),
-    #                       device=device)
 
     # Score
     best_value = None

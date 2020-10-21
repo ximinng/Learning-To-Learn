@@ -4,24 +4,24 @@
    Author :        xxm
 """
 import os
+import sys
+
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
+
 import torch
 from tqdm import tqdm
 
-from torchmeta.datasets.helpers import omniglot
 from torchmeta.utils.data import BatchMetaDataLoader
 
 from learningTolearn.dataset import get_benchmark_by_name
 from learningTolearn.method.metric import get_prototypes, get_accuracy, prototypical_loss
-from learningTolearn.backbone import ModelConv, ModelConvOmniglot
+from learningTolearn.backbone import ModelConvOmniglot
 
 
 def train(args):
     device = torch.device('cuda:0' if args.use_cuda and torch.cuda.is_available() else 'cpu')
-
-    # dataset = omniglot(args.folder, shots=args.num_shots, ways=args.num_ways,
-    #                    shuffle=True, test_shots=15, meta_train=True, download=args.download)
-    # dataset = BatchMetaDataLoader(dataset, batch_size=args.batch_size,
-    #                                  shuffle=True, num_workers=args.num_workers)
 
     # 加载数据集
     benchmark = get_benchmark_by_name(args.dataset,
@@ -29,7 +29,6 @@ def train(args):
                                       args.num_ways,
                                       args.num_shots,
                                       args.num_shots_test,
-                                      args.backbone,
                                       hidden_size=args.hidden_size)
     # 训练集
     meta_train_dataloader = BatchMetaDataLoader(benchmark.meta_train_dataset,
@@ -44,7 +43,7 @@ def train(args):
                                               num_workers=args.num_workers,
                                               pin_memory=True)
 
-    model = ModelConvOmniglot(args.embedding_size, hidden_size=args.hidden_size, embedding=False)
+    model = ModelConvOmniglot(args.embedding_size, hidden_size=args.hidden_size, embedding=True)
     model.to(device=device)
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
@@ -56,7 +55,6 @@ def train(args):
 
             train_inputs, train_targets = batch['train']
             train_inputs = train_inputs.to(device=device)  # [16, 25, 1, 28, 28]
-            print(train_inputs.shape)
             train_targets = train_targets.to(device=device)  # [16, 25]
             train_embeddings = model(train_inputs)
 
@@ -93,7 +91,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Prototypical Networks')
 
-    parser.add_argument('folder', type=str, default='/few-shot-datasets',
+    parser.add_argument('--folder', type=str, default='/Documents/Github/few-shot-datasets/',
                         help='Path to the folder the data is downloaded to.')
     parser.add_argument('--dataset', type=str,
                         choices=['sinusoid', 'omniglot', 'miniimagenet', 'tieredimagenet'], default='omniglot',
@@ -106,8 +104,6 @@ if __name__ == '__main__':
                         help='Number of test example per class. '
                              'If negative, same as the number of training examples `--num-shots` (default: 15).')
 
-    parser.add_argument('--backbone', type=str, default='resnet10',
-                        help='The backbone of the few-shot training set. (default: resnet10)')
     parser.add_argument('--embedding-size', type=int, default=64,
                         help='Dimension of the embedding/latent space (default: 64).')
     parser.add_argument('--hidden-size', type=int, default=64,
@@ -123,7 +119,7 @@ if __name__ == '__main__':
                         help='Number of workers for data loading (default: 1).')
     parser.add_argument('--download', action='store_true',
                         help='Download the Omniglot dataset in the data folder.')
-    parser.add_argument('--use-cuda', action='store_true',
+    parser.add_argument('--use_cuda', action='store_true',
                         help='Use CUDA if available.')
 
     args = parser.parse_args()

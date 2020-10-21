@@ -36,7 +36,7 @@ def get_prototypes(embeddings, targets, num_classes):
         shape `(batch_size, num_examples)`.
 
     num_classes : int
-        Number of classes in the task.
+        Number of classes in the task (`num_ways`).
 
     Returns
     -------
@@ -80,6 +80,7 @@ def prototypical_loss(prototypes, embeddings, targets, **kwargs):
     loss : `torch.FloatTensor` instance
         The negative log-likelihood on the query points.
     """
+    # [batch_size, num_classes, num_examples]
     squared_distances = torch.sum((prototypes.unsqueeze(2) - embeddings.unsqueeze(1)) ** 2, dim=-1)
     return F.cross_entropy(-squared_distances, targets, **kwargs)
 
@@ -104,8 +105,8 @@ def get_accuracy(prototypes, embeddings, targets):
     accuracy : `torch.FloatTensor` instance
         Mean accuracy on the query points.
     """
-    proto = prototypes.unsqueeze(1)
-    embed = embeddings.unsqueeze(2)
-    sq_distances = torch.sum((proto - embed) ** 2, dim=-1)
-    _, predictions = torch.min(sq_distances, dim=-1)
+    proto = prototypes.unsqueeze(1)  # [batch, 1, num_classes, emb_size]
+    embed = embeddings.unsqueeze(2)  # [batch, num_examples, 1, emb_size]
+    sq_distances = torch.sum((proto - embed) ** 2, dim=-1)  # [batch, num_examples, num_classes]
+    _, predictions = torch.min(sq_distances, dim=-1)  # [batch, num_examples] (values, *indices*)
     return torch.mean(predictions.eq(targets).float())

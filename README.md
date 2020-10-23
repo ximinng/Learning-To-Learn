@@ -30,6 +30,7 @@ The following algorithms are currently supported:
 
 - MAML
 - MetaSGD
+- LEO (Meta-Learning with Latent Embedding Optimization)
 - Prototypical Network
 - EGNN
 

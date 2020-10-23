@@ -105,7 +105,7 @@ def get_accuracy(prototypes, embeddings, targets):
     accuracy : `torch.FloatTensor` instance
         Mean accuracy on the query points.
     """
-    proto = prototypes.unsqueeze(1)  # [batch, 1, num_classes, emb_size]
+    proto = prototypes.unsqueeze(1)  # [batch, 1, classes, emb_size]
     embed = embeddings.unsqueeze(2)  # [batch, num_examples, 1, emb_size]
     sq_distances = torch.sum((proto - embed) ** 2, dim=-1)  # [batch, num_examples, num_classes]
     _, predictions = torch.min(sq_distances, dim=-1)  # [batch, num_examples] (values, *indices*)
